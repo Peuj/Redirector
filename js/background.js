@@ -572,6 +572,56 @@ function sendNotifications(redirect, originalUrl, redirectedUrl) {
 }
 
 chrome.runtime.onStartup.addListener(handleStartup);
+
+// Context menu: "Copy with Redirect"
+// Recreate on install/update; item persists across service worker restarts.
+chrome.runtime.onInstalled.addListener(() => {
+	chrome.contextMenus.removeAll(() => {
+		chrome.contextMenus.create({
+			id: "copy-with-redirect",
+			title: "Copy with Redirect",
+			contexts: ["link", "page"]
+		});
+	});
+});
+
+// Returns the first redirect URL that matches `url` for main_frame requests,
+// or null if no rule matches.
+function getRedirectForUrl(url) {
+	const list = partitionedRedirects.main_frame || [];
+	for (const r of list) {
+		const result = r.getMatch(url);
+		if (result.isMatch) return result.redirectTo;
+	}
+	return null;
+}
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+	const url = info.linkUrl || info.pageUrl;
+	if (!url || !tab) return;
+	const redirectedUrl = getRedirectForUrl(url);
+	const textToCopy = redirectedUrl || url;
+	chrome.scripting.executeScript({
+		target: { tabId: tab.id },
+		func: (text) => {
+			if (navigator.clipboard) {
+				return navigator.clipboard.writeText(text);
+			}
+			const el = document.createElement("textarea");
+			el.value = text;
+			el.style.position = "fixed";
+			el.style.opacity = "0";
+			document.body.appendChild(el);
+			el.focus();
+			el.select();
+			document.execCommand("copy");
+			document.body.removeChild(el);
+		},
+		args: [textToCopy]
+	}).catch((err) => {
+		log(`Copy with Redirect: ${err.message}`);
+	});
+});
 function handleStartup() {
 	enableNotifications = false;
 	chrome.storage.local.set({
