@@ -23,6 +23,7 @@
 					<li><a href="#processmatches">Process Matches</a>
 						<ol>
 							<li><a href="#noprocessing">No Processing</a></li>
+							<li><a href="#replacematches">Replace matches</a></li>
 							<li><a href="#urldecodematches">URL decode matches</a></li>
 							<li><a href="#doubleurldecodematches">Double URL decode matches</a></li>
 							<li><a href="#urlencodematches">URL encode matches</a></li>
@@ -87,7 +88,10 @@
             include pattern. You can use the special signs $1, $2, $3 etc. in the url, they will be replaced by the results of captures with regular
             expressions or stars with wildcards. For instance, if you have the include pattern <span class="pattern">http://google.com/*</span>, redirect to <span class="pattern">http://froogle.com/$1</span>
             and you open the page <span class="url">http://google.com/foobar</span>, then you will be redirected to <span class="url">http://froogle.com/foobar</span>, since 'foobar' was what the star replaced. $1 is for the
-            first star in the pattern, $2 for the second and so on. For regular expression $1 is for the first parentheses, $2 for the second etc.</li>
+            first star in the pattern, $2 for the second and so on. For regular expression $1 is for the first parentheses, $2 for the second etc.
+            <br><br>
+            <strong>Data URIs:</strong> You can redirect to <code>data:</code> URLs to display custom content instead of loading a page. For example,
+            redirecting to <span class="pattern">data:text/html,&lt;h1&gt;Blocked&lt;/h1&gt;</span> shows a custom block page.</li>
 		
             <li><a name="patterntype"></a><strong>Pattern type:</strong> This specifies how Redirector should interpret the patterns, either as
             <a href="#wildcards">wildcards</a> or <a href="#regularexpressions">regular expressions</a>.</li>
@@ -96,6 +100,11 @@
             	different ways to process the Regular expression matches before using them. The decoding options available are:
             	<ul>
             		<li><a name="noprocessing"></a><strong>No Processing:</strong> This is the default. Just use the matches from the original url exactly as they are.</li>
+		            <li><a name="replacematches"></a><strong>Replace matches:</strong> Find and replace text within each captured match before inserting it into the redirect URL.
+		            Enter a <strong>Find</strong> string (plain text or, optionally, a wildcard/regex pattern) and a <strong>Replace with</strong> string.
+		            You can use JavaScript <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_a_parameter" target="_blank">replacement patterns</a> such as <span class="pattern">$&amp;</span> in the replacement.
+		            Check <strong>Replace all occurrences</strong> to replace every match instead of only the first.
+		            </li>
 		            <li><a name="urldecodematches"></a><strong>URL Decode matches:</strong> A common usage of Redirector is to catch urls like
 		            <span class="url">http://foo.com/redirect.php?url=http%3A%2F%2Fbar%2Ecom%2Fpath</span> and try to catch the url parameter and redirect to it. A pattern
 		            like <span class="pattern">http://foo.com/redirect.php?url=*</span> might be used for that purpose. However, if the url parameter is <em>escaped</em> (also known

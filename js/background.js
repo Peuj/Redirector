@@ -14,6 +14,7 @@ function log(msg, force) {
 }
 log.enabled = false;
 let enableNotifications = false;
+let enablePost = false;
 
 function isDarkMode() {
 	// window.matchMedia is not available in Chrome MV3 service workers
@@ -62,9 +63,9 @@ function setIcon(image) {
 // decide whether or not we want to redirect.
 function checkRedirects(details) {
 
-	// We only allow GET request to be redirected, don't want to accidentally redirect
+	// By default we only allow GET request to be redirected, don't want to accidentally redirect
 	// sensitive POST parameters
-	if (details.method != "GET") {
+	if (!enablePost && details.method !== "GET") {
 		return {};
 	}
 	log(`Checking: ${details.type}: ${details.url}`);
@@ -106,7 +107,7 @@ function checkRedirects(details) {
 			}
 
 
-			log(`Redirecting ${details.url} ===> ${result.redirectTo}, type: ${details.type}, pattern: ${r.includePattern} which is in Rule : ${r.description}`);
+		log(`Redirecting ${details.method.toUpperCase()} ${details.url} ===> ${result.redirectTo}, type: ${details.type}, pattern: ${r.includePattern} which is in Rule : ${r.description}`);
 			if (enableNotifications) {
 				sendNotifications(r, details.url, result.redirectTo);
 			}
@@ -150,6 +151,11 @@ function monitorChanges(changes) {
 		log(`notifications setting changed to ${changes.enableNotifications.newValue}`);
 		enableNotifications = changes.enableNotifications.newValue;
 	}
+
+	if (changes.enablePost) {
+		log(`Enable POST setting has changed to ${changes.enablePost.newValue}`);
+		enablePost = changes.enablePost.newValue;
+	}
 }
 chrome.storage.onChanged.addListener(monitorChanges);
 
@@ -172,7 +178,7 @@ function createFilter(redirects) {
 	types.sort();
 
 	return {
-		urls: ["https://*/*", "http://*/*"],
+		urls: ["https://*/*", "http://*/*", "data:*/*"],
 		types
 	};
 }
@@ -253,13 +259,28 @@ async function updateDNRRules(redirects) {
 	}
 }
 
+// Reads redirects from managed storage (browser policy) if available, falls back to user storageArea.
+function getRedirects(callback) {
+	if (chrome.storage.managed instanceof Object) {
+		chrome.storage.managed.get("redirects", function(obj) {
+			if (obj && obj.redirects) {
+				callback(obj);
+			} else {
+				storageArea.get({ redirects: [] }, callback);
+			}
+		});
+	} else {
+		storageArea.get({ redirects: [] }, callback);
+	}
+}
+
 // Sets up the listener, partitions the redirects, creates the appropriate filters etc.
 function setUpRedirectListener() {
 
 	chrome.webRequest.onBeforeRequest.removeListener(checkRedirects); // Unsubscribe first, in case there are changes...
 	chrome.webNavigation.onHistoryStateUpdated.removeListener(checkHistoryStateRedirects);
 
-	storageArea.get({ redirects: [] }, function(obj) {
+	getRedirects(function(obj) {
 		const redirects = obj.redirects;
 		if (redirects.length == 0) {
 			log("No redirects defined, not setting up listener");
@@ -339,9 +360,7 @@ chrome.runtime.onMessage.addListener(
 		log(`Received background message: ${JSON.stringify(request)}`);
 		if (request.type == "get-redirects") {
 			log("Getting redirects from storage");
-			storageArea.get({
-				redirects: []
-			}, function (obj) {
+			getRedirects(function(obj) {
 				log(`Got redirects from storage: ${JSON.stringify(obj)}`);
 				sendResponse(obj);
 				log("Sent redirects to content page");
@@ -479,6 +498,10 @@ chrome.storage.local.get({
 function setupInitial() {
 	chrome.storage.local.get({ enableNotifications: false }, function(obj) {
 		enableNotifications = obj.enableNotifications;
+	});
+
+	chrome.storage.local.get({ enablePost: false }, function(obj) {
+		enablePost = obj.enablePost;
 	});
 
 	chrome.storage.local.get({

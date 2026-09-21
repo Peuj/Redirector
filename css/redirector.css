@@ -513,8 +513,12 @@ a.disabled:hover, button[disabled]:hover {
   margin-top:8px;
 }
 
-.hidden {
+.hidden, .replace-process-input.hidden {
   display:none;
+}
+
+.replace-process-input input[type='checkbox'] {
+  margin-top: 6px;
 }
 
 #advanced-toggle {
@@ -583,6 +587,16 @@ footer small a:hover {
 
 #storage-sync-option input {
   margin:10px;
+}
+
+/* Mobile layout */
+
+@media only screen and (width <= 767px) {
+  #delete-redirect-form,
+  #edit-redirect-form {
+    width: 85vw;
+    margin-left: -42.5vw;
+  }
 }
 
 /* Dark mode support */

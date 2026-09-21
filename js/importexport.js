@@ -52,7 +52,8 @@ function importRedirects(ev) {
 			const r = new Redirect(data.redirects[i]);
 			const isRegex = r.patternType === Redirect.REGEX;
 			const patternError = Redirect.validateRegexSafety(r.includePattern, isRegex) ||
-				Redirect.validateRegexSafety(r.excludePattern, isRegex);
+				Redirect.validateRegexSafety(r.excludePattern, isRegex) ||
+				(r.processMatches === "replace" && r.usePatternForReplace && Redirect.validateRegexSafety(r.replacePattern, isRegex));
 			if (patternError) {
 				unsafe++;
 				continue;

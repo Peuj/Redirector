@@ -107,3 +107,37 @@ toolbarbutton#toggle-button--redirectoreinaregilssoncom-redirector[image*="disab
 ```
 
 If you don't know what the `userChrome.css` file is, or how to edit it, please look it up on a Firefox forum instead of asking about it in this repository. Thanks!
+
+## Browser Policy Support
+
+Redirector supports pre-configuring redirects via browser policy (useful for managed/enterprise deployments).
+
+- Firefox: https://mozilla.github.io/policy-templates/#3rdparty
+- Chromium: https://www.chromium.org/administrators/configuring-policy-for-extensions/
+
+```json
+{
+  "policies": {
+    "3rdparty": {
+      "Extensions": {
+        "redirector@einaregilsson.com": {
+          "redirects": [
+            {
+              "description": "Example redirect",
+              "exampleUrl": "http://example.com/some-word-that-matches-wildcard",
+              "includePattern": "http://example.com/*",
+              "excludePattern": "",
+              "patternDesc": "",
+              "redirectUrl": "https://google.com/search?q=$1",
+              "patternType": "W",
+              "processMatches": "noProcessing",
+              "disabled": false,
+              "appliesTo": ["main_frame"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+```

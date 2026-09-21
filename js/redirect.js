@@ -53,6 +53,11 @@ Redirect.prototype = {
 	redirectUrl: "",
 	patternType: "",
 	processMatches: "noProcessing",
+	replaceFrom: "",
+	replacePattern: "",
+	replacement: "",
+	replaceAll: false,
+	usePatternForReplace: false,
 	disabled: false,
 	grouped: false,
 
@@ -67,6 +72,12 @@ Redirect.prototype = {
 		if (excPattern) {
 			this._rxExclude = new RegExp(excPattern, "gi");
 		}
+		if (this.processMatches === "replace" && this.usePatternForReplace && this.replacePattern) {
+			const replPattern = this._preparePattern(this.replacePattern);
+			if (replPattern) {
+				this._rxReplace = new RegExp(replPattern, this.replaceAll ? "gi" : "i");
+			}
+		}
 	},
 
 	equals(redirect) {
@@ -78,6 +89,10 @@ Redirect.prototype = {
 			this.redirectUrl == redirect.redirectUrl &&
 			this.patternType == redirect.patternType &&
 			this.processMatches == redirect.processMatches &&
+			this.replaceFrom == redirect.replaceFrom &&
+			this.replacement == redirect.replacement &&
+			this.replaceAll == redirect.replaceAll &&
+			this.usePatternForReplace == redirect.usePatternForReplace &&
 			this.appliesTo.toString() == redirect.appliesTo.toString();
 	},
 
@@ -93,6 +108,11 @@ Redirect.prototype = {
 			redirectUrl: this.redirectUrl,
 			patternType: this.patternType,
 			processMatches: this.processMatches,
+			replaceFrom: this.replaceFrom,
+			replacePattern: this.replacePattern,
+			replacement: this.replacement,
+			replaceAll: this.replaceAll,
+			usePatternForReplace: this.usePatternForReplace,
 			disabled: this.disabled,
 			grouped: this.grouped,
 			appliesTo: this.appliesTo.slice(0)
@@ -160,6 +180,16 @@ Redirect.prototype = {
 			}
 		}
 
+		if (this.processMatches === "replace" && this.patternType == Redirect.REGEX && this.usePatternForReplace && this.replacePattern) {
+			try {
+				// eslint-disable-next-line no-new
+				new RegExp(this.replacePattern, "gi");
+			} catch (e) {
+				this.error = "Invalid regular expression in Replace pattern.";
+				return;
+			}
+		}
+
 		if (!this.appliesTo || this.appliesTo.length == 0) {
 			this.error = "At least one request type must be chosen.";
 			return;
@@ -203,6 +233,7 @@ Redirect.prototype = {
 	// Private functions below
 	_rxInclude: null,
 	_rxExclude: null,
+	_rxReplace: null,
 
 	_preparePattern(pattern) {
 		if (!pattern) {
@@ -247,6 +278,11 @@ Redirect.prototype = {
 		if (!o.processMatches && o.escapeMatches) {
 			this.processMatches = "urlEncode";
 		}
+		this.replaceFrom = o.replaceFrom || "";
+		this.replacePattern = o.replacePattern || o.replaceFrom || "";
+		this.replacement = o.replacement || "";
+		this.replaceAll = Boolean(o.replaceAll);
+		this.usePatternForReplace = Boolean(o.usePatternForReplace);
 
 		this.disabled = Boolean(o.disabled);
 		if (o.appliesTo && o.appliesTo.length) {
@@ -263,6 +299,7 @@ Redirect.prototype = {
 	get processMatchesExampleText() {
 		const examples = {
 			noProcessing: "Use matches as they are",
+			replace: "Find and replace text within each match",
 			urlEncode: "E.g. turn /bar/foo?x=2 into %2Fbar%2Ffoo%3Fx%3D2",
 			urlDecode: "E.g. turn %2Fbar%2Ffoo%3Fx%3D2 into /bar/foo?x=2",
 			doubleUrlDecode: "E.g. turn %252Fbar%252Ffoo%253Fx%253D2 into /bar/foo?x=2",
@@ -289,7 +326,14 @@ Redirect.prototype = {
 		let resultUrl = this.redirectUrl;
 		for (let i = matches.length - 1; i > 0; i--) {
 			let repl = matches[i] || "";
-			if (this.processMatches == "urlDecode") {
+			if (this.processMatches === "replace") {
+				const pattern = this.usePatternForReplace ? (this._rxReplace || null) : (this.replaceFrom || null);
+				if (pattern !== null) {
+					repl = this.replaceAll
+						? repl.replaceAll(pattern, this.replacement)
+						: repl.replace(pattern, this.replacement);
+				}
+			} else if (this.processMatches == "urlDecode") {
 				repl = unescape(repl);
 			} else if (this.processMatches == "doubleUrlDecode") {
 				repl = unescape(unescape(repl));
