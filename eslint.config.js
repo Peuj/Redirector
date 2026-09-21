@@ -33,7 +33,9 @@ module.exports = [
                 renderRedirects: "writable",
                 updateBindings: "writable",
                 template: "writable",
-                options: "writable"
+                options: "writable",
+                // Cross-file globals: importexport.js → redirectorpage.js
+                updateExportLink: "writable"
             }
         },
         rules: {

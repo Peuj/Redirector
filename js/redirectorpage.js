@@ -56,6 +56,7 @@ function renderRedirects() {
 		renderSingleRedirect(node, r, i);
 		el(".redirect-rows").appendChild(node);
 	}
+	updateExportLink();
 }
 
 function renderSingleRedirect(node, redirect, index) {

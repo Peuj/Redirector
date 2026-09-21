@@ -13,6 +13,16 @@ if (typeof exports !== "undefined") {
 Redirect.WILDCARD = "W";
 Redirect.REGEX = "R";
 
+// Returns an error string if the pattern is unsafe to run in a blocking webRequest listener, null if safe.
+// Only call with isRegex=true for REGEX-type patterns; wildcard patterns escape special chars and can't have backreferences.
+Redirect.validateRegexSafety = function(pattern, isRegex) {
+    if (!pattern) return null;
+    if (pattern.length > 2000) return "Pattern too long (max 2000 characters)";
+    // Backreferences bypass V8's linear-time engine and can cause catastrophic backtracking on carefully crafted URLs
+    if (isRegex && (/\\[1-9]|\\k</).test(pattern)) return "Pattern contains backreferences";
+    return null;
+};
+
 Redirect.requestTypes = {
 	main_frame: "Main window (address bar)",
 	sub_frame: "IFrames",
@@ -247,7 +257,7 @@ Redirect.prototype = {
 	},
 
 	get appliesToText() {
-		return this.appliesTo.map(type => Redirect.requestTypes[type]).join(", ");
+		return this.appliesTo.map(type => Redirect.requestTypes[type] || type).join(", ");
 	},
 
 	get processMatchesExampleText() {

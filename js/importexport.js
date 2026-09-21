@@ -1,22 +1,25 @@
 // Shows a message explaining how many redirects were imported.
-function showImportedMessage(imported, existing) {
-	if (imported == 0 && existing == 0) {
+function showImportedMessage(imported, existing, unsafe) {
+	const parts = [];
+	let success = false;
+
+	if (imported > 0) {
+		parts.push(`Successfully imported ${imported} redirect${imported > 1 ? "s" : ""}.`);
+		success = true;
+	}
+	if (existing > 0) {
+		const n = existing === 1 ? "1 redirect" : `${existing} redirects`;
+		parts.push(`${n} already existed and ${existing === 1 ? "was" : "were"} ignored.`);
+	}
+	if (unsafe > 0) {
+		const n = unsafe === 1 ? "1 redirect" : `${unsafe} redirects`;
+		parts.push(`${n} ${unsafe === 1 ? "was" : "were"} skipped due to an unsafe regex pattern.`);
+	}
+
+	if (parts.length === 0) {
 		showMessage("No redirects existed in the file.");
-	}
-	if (imported > 0 && existing == 0) {
-		showMessage(`Successfully imported ${imported} redirect${imported > 1 ? "s." : "."}`, true);
-	}
-	if (imported == 0 && existing > 0) {
-		showMessage("All redirects in the file already existed and were ignored.");
-	}
-	if (imported > 0 && existing > 0) {
-		let m = `Successfully imported ${imported} redirect${imported > 1 ? "s" : ""}. `;
-		if (existing == 1) {
-			m += "1 redirect already existed and was ignored.";
-		} else {
-			m += `${existing} redirects already existed and were ignored.`; 
-		}
-		showMessage(m, true);
+	} else {
+		showMessage(parts.join(" "), success);
 	}
 }
 
@@ -43,9 +46,17 @@ function importRedirects(ev) {
 		}
 
 		let imported = 0,
-			existing = 0;
+			existing = 0,
+			unsafe = 0;
 		for (let i = 0; i < data.redirects.length; i++) {
 			const r = new Redirect(data.redirects[i]);
+			const isRegex = r.patternType === Redirect.REGEX;
+			const patternError = Redirect.validateRegexSafety(r.includePattern, isRegex) ||
+				Redirect.validateRegexSafety(r.excludePattern, isRegex);
+			if (patternError) {
+				unsafe++;
+				continue;
+			}
 			r.updateExampleResult();
 			if (REDIRECTS.some(item => new Redirect(item).equals(r))) {
 				existing++;
@@ -54,8 +65,8 @@ function importRedirects(ev) {
 				imported++;
 			}
 		}
-		
-		showImportedMessage(imported, existing);
+
+		showImportedMessage(imported, existing, unsafe);
 
 		saveChanges();
 		renderRedirects();
@@ -91,7 +102,7 @@ updateExportLink();
 
 function setupImportExportEventListeners() {
 	el("#import-file").addEventListener("change", importRedirects);
-	el("#export-link").addEventListener("mousedown", updateExportLink);
+	el("#export-link").addEventListener("click", updateExportLink);
 }
 
 setupImportExportEventListeners();
