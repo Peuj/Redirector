@@ -5,7 +5,7 @@ const globals = require("globals");
 
 module.exports = [
     {
-        ignores: ["build/**", "promo/**", ".claude/**", "node_modules/**", "eslint.config.js"]
+        ignores: ["build/**", "promo/**", ".claude/**", "node_modules/**", "eslint.config.js", "vitest.config.mjs"]
     },
     js.configs.recommended,
     {
@@ -179,6 +179,28 @@ module.exports = [
             "wrap-regex": "error",
             "yield-star-spacing": "error",
             "yoda": ["error", "never"]
+        }
+    },
+    {
+        // Test files: Node CJS environment with Vitest globals
+        files: ["test/**/*.js"],
+        languageOptions: {
+            sourceType: "commonjs",
+            globals: {
+                ...globals.node,
+                describe: "readonly",
+                test: "readonly",
+                it: "readonly",
+                expect: "readonly",
+                beforeEach: "readonly",
+                afterEach: "readonly",
+                beforeAll: "readonly",
+                afterAll: "readonly"
+            }
+        },
+        rules: {
+            "comma-dangle": ["error", "only-multiline"],
+            "dot-location": ["error", "property"]
         }
     }
 ];
