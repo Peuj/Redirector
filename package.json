@@ -1,0 +1,22 @@
+{
+    "name": "redirector",
+    "version": "3.5.4",
+    "description": "Browser extension that redirects URLs based on user-defined rules",
+    "private": true,
+    "scripts": {
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "lint:css": "stylelint \"css/*.css\"",
+        "lint:css:fix": "stylelint \"css/*.css\" --fix",
+        "lint:html": "htmlhint \"popup.html\" \"redirector.html\" \"help.html\"",
+        "lint:all": "npm run lint && npm run lint:css && npm run lint:html"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.10.0",
+        "globals": "^17.12.0",
+        "htmlhint": "^1.9.2",
+        "stylelint": "^17.15.0",
+        "stylelint-config-standard": "^40.0.0"
+    }
+}

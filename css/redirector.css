@@ -14,27 +14,27 @@ h1, h2, h3, h5, h6 {
 
 h1 {
   font-size:55px;
-  margin-bottom:0px;
+  margin-bottom:0;
   cursor:default;
-  padding:0px;
+  padding:0;
   letter-spacing: 2.1px;
 }
 
 h3 {
   font-size:18px;
-  padding:0px;
+  padding:0;
 }
 
 h4 {
   text-align: left;
   font-size:14px;
-  padding:0px;
+  padding:0;
   margin:4px;
 }
 
 h5 {
   font-size:20px;
-  margin:-6px 0 0 0;
+  margin:-6px 0 0;
   color:#5e6163;
 }
 
@@ -126,7 +126,7 @@ input[type="radio"] {
 /* Main menu with buttons */
 
 #menu {
-  margin: 30px auto 8px auto;
+  margin: 30px auto 8px;
   max-width:90%;
   text-align: center;
 }
@@ -142,7 +142,7 @@ input[type="radio"] {
   color:white;
   max-width: 800px;
   border-radius:3px;
-  height:0px;
+  height:0;
   line-height: 30px;
   font-size:16px;
   text-align:center;
@@ -169,7 +169,7 @@ input[type="radio"] {
   font-size:20px;
   position: absolute;
   right:6px;
-  top:0px;
+  top:0;
   cursor:pointer;
 }
 
@@ -178,7 +178,7 @@ input[type="radio"] {
 .redirect-table {
   max-width:800px;
   border:solid 1px #bbb;
-  margin:0px auto;
+  margin:0 auto;
   border-radius:3px;
 }
 
@@ -206,7 +206,7 @@ input[type="radio"] {
 
 .redirect-info div p {
   display:table-cell;
-  word-wrap:anywhere;
+  overflow-wrap:anywhere;
   max-width:700px;
 }
 
@@ -303,17 +303,17 @@ a.disabled:hover, button[disabled]:hover {
   background-color: #2196F3;
 }
 
-.checkmark:after {
+.checkmark::after {
   content: "";
   position: absolute;
   display: none;
 }
 
-.toggle-container input:checked ~ .checkMarked:after {
+.toggle-container input:checked ~ .checkMarked::after {
   display: block;
 }
 
-.toggle-container .checkMarked:after {
+.toggle-container .checkMarked::after {
   left: 4px;
   top: -1px;
   width: 4px;
@@ -368,10 +368,7 @@ a.disabled:hover, button[disabled]:hover {
 
 #cover {
   position: fixed;
-  top:0px;
-  bottom:0px;
-  left:0px;
-  right:0px;
+  inset:0;
   z-index: 5000;
   background: #333;
   opacity: 0.5;
@@ -430,7 +427,7 @@ a.disabled:hover, button[disabled]:hover {
 .example-result {
   width:500px;
   display:inline-block;
-  word-wrap:break-word;
+  overflow-wrap:break-word;
   margin-top:5px;
 }
 
@@ -441,7 +438,7 @@ a.disabled:hover, button[disabled]:hover {
 
 #unescape-matches, #escape-matches {
   margin-top:7px;
-  margin-left:0px;
+  margin-left:0;
 }
 
 .input-cell label {
@@ -458,7 +455,7 @@ a.disabled:hover, button[disabled]:hover {
 }
 
 .input-cell label input {
-  margin-left:0px;
+  margin-left:0;
 }
 
 .error {

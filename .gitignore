@@ -6,3 +6,4 @@ ffox.sh
 devprofile/*
 debug.sh
 *.pem
+node_modules/

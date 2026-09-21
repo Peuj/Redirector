@@ -22,6 +22,10 @@ button {
 	margin: 5px auto !important;
 	display: block;
 	width: 90%;
+	height: 20px;
+	border: solid 1px #aaa !important;
+	border-radius: 3px;
+	color: #333;
 }
 
 .disabled {
@@ -45,13 +49,6 @@ label {
         	position: relative;
         	top: 1px;
     	}
-}
-
-button {
-	height: 20px;
-	border: solid 1px #aaa !important;
-	border-radius: 3px;
-	color: #333;
 }
 
 label span {
