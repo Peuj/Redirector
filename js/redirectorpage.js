@@ -25,7 +25,8 @@ function saveChanges() {
 }
 
 function toggleSyncSetting() {
-	chrome.runtime.sendMessage({ type: "toggle-sync", isSyncEnabled: !options.isSyncEnabled }, function(response) {
+	const isChecked = el("#storage-sync-option input").checked;
+	chrome.runtime.sendMessage({ type: "toggle-sync", isSyncEnabled: isChecked }, function(response) {
 		if (response.message === "sync-enabled") {
 			options.isSyncEnabled = true;
 			showMessage("Sync is enabled!", true);
@@ -265,6 +266,22 @@ function moveDownBottom(index) {
 	saveChanges();
 }
 
+function deleteAllRedirects() {
+	showForm("#delete-all-form");
+}
+
+function confirmDeleteAll() {
+	REDIRECTS.splice(0);
+	renderRedirects();
+	saveChanges();
+	hideForm("#delete-all-form");
+	showMessage("All redirects have been deleted.", true);
+}
+
+function cancelDeleteAll() {
+	hideForm("#delete-all-form");
+}
+
 // All the setup stuff for the page
 function pageLoad() {
 	template = el("#redirect-row-template");
@@ -302,8 +319,12 @@ function pageLoad() {
 		renderRedirects();
 	});
 
-	chrome.storage.local.get({ isSyncEnabled: false }, function(obj) {
-		options.isSyncEnabled = obj.isSyncEnabled;
+	chrome.runtime.sendMessage({ type: "get-sync-state" }, function(response) {
+		if (response && response.isSyncEnabled !== undefined) {
+			options.isSyncEnabled = response.isSyncEnabled;
+		} else {
+			options.isSyncEnabled = false;
+		}
 		el("#storage-sync-option input").checked = options.isSyncEnabled;
 	});
 
@@ -315,6 +336,9 @@ function pageLoad() {
 	// Setup event listeners
 	el("#hide-message").addEventListener("click", hideMessage);
 	el("#storage-sync-option input").addEventListener("click", toggleSyncSetting);
+	el("#delete-all-btn").addEventListener("click", deleteAllRedirects);
+	el("#confirm-delete-all").addEventListener("click", confirmDeleteAll);
+	el("#cancel-delete-all").addEventListener("click", cancelDeleteAll);
 	el(".redirect-rows").addEventListener("click", function(ev) {
 		if (ev.target.type == "checkbox") {
 			ev.target.nextElementSibling.classList.add("checkMarked");

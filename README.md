@@ -15,9 +15,10 @@ Opera extension is no longer present (as of 2023/01/16)
 ## Examples
 ### De-mobilizer
 - Example URL: `https://en.m.wikipedia.org/`
-- Include pattern: `^(https?://)([a-z0-9-]*\.)m(?:obile)?\.(.*)`
+- Include pattern: `^(https?://)([a-z0-9-]*\.)?m(?:obile)?\.(.*)`
 - Redirect to: `$1$2$3`
 - Pattern type: Regular Expression
+- Exclude pattern: `m\.me`
 - Description: Always show the desktop version of websites
 
 ### AMP redirect

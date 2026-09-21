@@ -105,4 +105,30 @@ function setupImportExportEventListeners() {
 	el("#export-link").addEventListener("click", updateExportLink);
 }
 
+function exportSingleRedirect(index) {
+	const redirect = REDIRECTS[index];
+	if (!redirect) {
+		showMessage("Redirect not found");
+		return;
+	}
+
+	const version = chrome.runtime.getManifest().version;
+	const exportObj = {
+		createdBy: `Redirector v${version}`,
+		createdAt: new Date(),
+		redirects: [new Redirect(redirect).toObject()]
+	};
+	const json = JSON.stringify(exportObj, null, 4);
+	const filename = `${(redirect.description || "My").replace(/[^a-zA-Z0-9]/g, "-").substring(0, 50)} redirector.json`;
+
+	const link = document.createElement("a");
+	link.href = `data:text/plain;charset=utf-8,${encodeURIComponent(json)}`;
+	link.download = filename;
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+
+	showMessage(`Successfully exported: ${redirect.description || "Unnamed redirect"}`, true);
+}
+
 setupImportExportEventListeners();

@@ -41,6 +41,18 @@
 			</div>
 		</div>
 
+		<!-- Confirmation form for deleting all redirects -->
+		<div id="delete-all-form">
+			<h3>Delete All Redirects</h3>
+			<div>
+				<p>Are you sure you want to delete <strong>all</strong> redirects? This action cannot be undone.</p>
+			</div>
+			<div class="button-container">
+				<button id="confirm-delete-all" class="btn red large">Yes, delete all</button>
+				<button id="cancel-delete-all" class="btn grey large">No, keep my redirects</button>
+			</div>
+		</div>
+
 
 		<!-- Form for creating and editing redirects -->
 		<div id="edit-redirect-form">
@@ -96,6 +108,7 @@
 							<option value="urlEncode">URL Encode</option>
 							<option value="urlDecode">URL Decode</option>
 							<option value="doubleUrlDecode">Double URL Decode</option>
+							<option value="base64Encode">Base64 Encode</option>
 							<option value="base64decode">Base64 Decode</option>
 						</select>
 						<span class="placeholder" data-bind="processMatchesExampleText"></span>
@@ -144,6 +157,7 @@
 				</span>
 
 				<a class="btn blue large" href="help.html" target="_blank">Help</a>
+				<button id="delete-all-btn" class="btn red large">Delete All</button>
 			</div>
 
 
@@ -192,6 +206,7 @@
 									<button class="btn medium grey move-downbottom-btn arrows" data-action="moveDownBottom" data-disabled="$last">⟱</button>
 								</span>
 								<button class="btn medium grey" data-action="duplicateRedirect">Duplicate</button>
+								<button class="btn medium blue" data-action="exportSingleRedirect">Export</button>
 							</div>
 							<label class="toggle-container">
 								<input class="checkbox" type="checkbox">

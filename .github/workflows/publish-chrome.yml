@@ -1,0 +1,31 @@
+name: Publish to Chrome Web Store
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Build Chrome extension
+      run: python build.py
+
+    - name: Upload to Chrome Web Store
+      uses: trmcnvn/chrome-addon@v2
+      with:
+        extension: ${{ secrets.EXTENSION_ID }}
+        zip: build/redirector-chrome.zip
+        client-id: ${{ secrets.CLIENT_ID }}
+        client-secret: ${{ secrets.CLIENT_SECRET }}
+        refresh-token: ${{ secrets.REFRESH_TOKEN }}
+        publish: true
