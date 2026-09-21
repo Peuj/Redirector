@@ -35,7 +35,9 @@ module.exports = [
                 template: "writable",
                 options: "writable",
                 // Cross-file globals: importexport.js → redirectorpage.js
-                updateExportLink: "writable"
+                updateExportLink: "writable",
+                // Service worker global (Chrome MV3 background)
+                importScripts: "readonly"
             }
         },
         rules: {

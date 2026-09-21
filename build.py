@@ -37,7 +37,7 @@ def create_addon(files, browser):
 
 	print('')
 	print(f'**** Creating addon for ${browser} ****')
-	
+
 	if browser == 'opera' and not os.path.exists(cert):
 		print('Extension certificate does not exist, cannot create .nex file for Opera')
 		return
@@ -46,18 +46,21 @@ def create_addon(files, browser):
 		print('Adding', f)
 		if f.endswith('manifest.json'):
 			manifest = json.load(open(f))
-			if browser != 'firefox':
-				del manifest['applications'] #Firefox specific, and causes warnings in other browsers...
-
 
 			if browser == 'firefox':
-				del manifest['background']['persistent'] #Firefox chokes on this, is always persistent anyway
+				# Firefox MV3 EventPage: uses scripts array, needs webRequestBlocking for blocking listeners
+				manifest['permissions'].append('webRequestBlocking')
+			else:
+				# Chrome/Edge/Opera MV3: service worker background + declarativeNetRequest
+				del manifest['browser_specific_settings']
+				manifest['background'] = {'service_worker': 'js/background.js'}
+				manifest['permissions'].append('declarativeNetRequest')
 
 			if browser == 'opera':
-				manifest['options_ui']['page'] = 'redirector.html' #Opera opens options in new tab, where the popup would look really ugly
-				manifest['options_ui']['chrome_style'] = False
+				# Opera opens options in new tab; the popup layout looks wrong there
+				manifest['options_ui']['page'] = 'redirector.html'
 
-			zf.writestr(f[2:], json.dumps(manifest, indent=2)) 
+			zf.writestr(f[2:], json.dumps(manifest, indent=2))
 		else:
 			zf.write(f[2:])
 
@@ -75,7 +78,7 @@ if __name__ == '__main__':
 	os.chdir(folder)
 
 	files = get_files_to_zip()
-	
+
 	print('******* REDIRECTOR BUILD SCRIPT *******')
 	print('')
 
@@ -83,4 +86,3 @@ if __name__ == '__main__':
 	create_addon(files, 'edge')
 	create_addon(files, 'opera')
 	create_addon(files, 'firefox')
-
