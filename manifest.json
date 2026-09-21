@@ -23,8 +23,7 @@
   ],
   "host_permissions": [
     "http://*/*",
-    "https://*/*",
-    "data:*/*"
+    "https://*/*"
   ],
   "browser_specific_settings": {
     "gecko": {

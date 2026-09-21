@@ -189,7 +189,7 @@ const createFilter = (redirects) => {
 	types.sort();
 
 	return {
-		urls: ["https://*/*", "http://*/*", "data:*/*"],
+		urls: ["https://*/*", "http://*/*"],
 		types
 	};
 };
