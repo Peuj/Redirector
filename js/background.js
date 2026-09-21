@@ -396,6 +396,7 @@ chrome.runtime.onMessage.addListener(
 			});
 		} else if (request.type == "update-icon") {
 			updateIcon();
+			sendResponse({});
 		} else if (request.type == "get-sync-state") {
 			chrome.storage.local.get({ isSyncEnabled: false }, (obj) => {
 				sendResponse({ isSyncEnabled: obj.isSyncEnabled });
