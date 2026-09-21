@@ -19,7 +19,7 @@ const toggle = (prop) => {
 const openRedirectorSettings = () => {
 
 	// switch to open one if we have it to minimize conflicts
-	const url = chrome.extension.getURL("redirector.html");
+	const url = chrome.runtime.getURL("redirector.html");
 
 	// FIREFOXBUG: Firefox chokes on url:url filter if the url is a moz-extension:// url
 	// so we don't use that, do it the more manual way instead.
