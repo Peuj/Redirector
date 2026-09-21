@@ -12,6 +12,7 @@ if (typeof exports !== "undefined") {
 // Static
 Redirect.WILDCARD = "W";
 Redirect.REGEX = "R";
+Redirect.customVariables = {};
 
 // Returns an error string if the pattern is unsafe to run in a blocking webRequest listener, null if safe.
 // Only call with isRegex=true for REGEX-type patterns; wildcard patterns escape special chars and can't have backreferences.
@@ -58,6 +59,8 @@ Redirect.prototype = {
 	replacement: "",
 	replaceAll: false,
 	usePatternForReplace: false,
+	allowLoops: false,
+	sourcePattern: "",
 	disabled: false,
 	grouped: false,
 
@@ -78,6 +81,12 @@ Redirect.prototype = {
 				this._rxReplace = new RegExp(replPattern, this.replaceAll ? "gi" : "i");
 			}
 		}
+		if (this.sourcePattern) {
+			const srcPattern = this._preparePattern(this.sourcePattern);
+			if (srcPattern) {
+				this._rxSource = new RegExp(srcPattern, "gi");
+			}
+		}
 	},
 
 	equals(redirect) {
@@ -93,6 +102,8 @@ Redirect.prototype = {
 			this.replacement == redirect.replacement &&
 			this.replaceAll == redirect.replaceAll &&
 			this.usePatternForReplace == redirect.usePatternForReplace &&
+			this.allowLoops == redirect.allowLoops &&
+			this.sourcePattern == redirect.sourcePattern &&
 			this.appliesTo.toString() == redirect.appliesTo.toString();
 	},
 
@@ -113,13 +124,15 @@ Redirect.prototype = {
 			replacement: this.replacement,
 			replaceAll: this.replaceAll,
 			usePatternForReplace: this.usePatternForReplace,
+			allowLoops: this.allowLoops,
+			sourcePattern: this.sourcePattern,
 			disabled: this.disabled,
 			grouped: this.grouped,
 			appliesTo: this.appliesTo.slice(0)
 		};
 	},
 
-	getMatch(url, forceIgnoreDisabled) {
+	getMatch(url, forceIgnoreDisabled, sourceUrl) {
 		if (!this._rxInclude) {
 			this.compile();
 		}
@@ -135,6 +148,8 @@ Redirect.prototype = {
 		if (redirectTo !== null) {
 			if (this.disabled && !forceIgnoreDisabled) {
 				result.isDisabledMatch = true;
+			} else if (this._rxSource && sourceUrl !== undefined && !this._sourceMatch(sourceUrl)) {
+				// source pattern set but source URL doesn't match; no redirect
 			} else if (this._excludeMatch(url)) {
 				result.isExcludeMatch = true;
 			} else {
@@ -234,6 +249,7 @@ Redirect.prototype = {
 	_rxInclude: null,
 	_rxExclude: null,
 	_rxReplace: null,
+	_rxSource: null,
 
 	_preparePattern(pattern) {
 		if (!pattern) {
@@ -283,6 +299,8 @@ Redirect.prototype = {
 		this.replacement = o.replacement || "";
 		this.replaceAll = Boolean(o.replaceAll);
 		this.usePatternForReplace = Boolean(o.usePatternForReplace);
+		this.allowLoops = Boolean(o.allowLoops);
+		this.sourcePattern = o.sourcePattern || "";
 
 		this.disabled = Boolean(o.disabled);
 		if (o.appliesTo && o.appliesTo.length) {
@@ -323,9 +341,9 @@ Redirect.prototype = {
 		if (!matches) {
 			return null;
 		}
-		let resultUrl = this.redirectUrl;
-		for (let i = matches.length - 1; i > 0; i--) {
-			let repl = matches[i] || "";
+		let resultUrl = this.redirectUrl.replace(/\$(\d+)/g, (_, n) => {
+			const idx = parseInt(n, 10);
+			let repl = matches[idx] || "";
 			if (this.processMatches === "replace") {
 				const pattern = this.usePatternForReplace ? (this._rxReplace || null) : (this.replaceFrom || null);
 				if (pattern !== null) {
@@ -333,24 +351,34 @@ Redirect.prototype = {
 						? repl.replaceAll(pattern, this.replacement)
 						: repl.replace(pattern, this.replacement);
 				}
-			} else if (this.processMatches == "urlDecode") {
+			} else if (this.processMatches === "urlDecode") {
 				repl = unescape(repl);
-			} else if (this.processMatches == "doubleUrlDecode") {
+			} else if (this.processMatches === "doubleUrlDecode") {
 				repl = unescape(unescape(repl));
-			} else if (this.processMatches == "urlEncode") {
+			} else if (this.processMatches === "urlEncode") {
 				repl = encodeURIComponent(repl);
-			} else if (this.processMatches == "base64Encode") {
+			} else if (this.processMatches === "base64Encode") {
 				repl = btoa(repl);
-			} else if (this.processMatches == "base64Decode" || this.processMatches == "base64decode") {
+			} else if (this.processMatches === "base64Decode" || this.processMatches === "base64decode") {
 				if (repl.indexOf("%") > -1) {
 					repl = unescape(repl);
 				}
 				repl = atob(repl);
 			}
-			resultUrl = resultUrl.replace(new RegExp(`\\$${i}`, "gi"), repl);
+			return repl;
+		});
+		for (const [name, value] of Object.entries(Redirect.customVariables)) {
+			resultUrl = resultUrl.replaceAll(`[${name}]`, value);
 		}
 		this._rxInclude.lastIndex = 0;
 		return resultUrl;
+	},
+
+	_sourceMatch(sourceUrl) {
+		if (!sourceUrl) return false;
+		const result = this._rxSource.test(sourceUrl);
+		this._rxSource.lastIndex = 0;
+		return result;
 	},
 
 	_excludeMatch(url) {

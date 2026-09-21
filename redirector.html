@@ -128,6 +128,16 @@
 					</div>
 				</div>
 				<div>
+					<label>Source pattern:</label>
+					<div class="input-cell"><input type="text" data-bind="sourcePattern" placeholder="Pattern matching the source/referrer page URL (optional)" /></div>
+				</div>
+				<div>
+					<label>Options:</label>
+					<div class="input-cell">
+						<label><input type="checkbox" id="allow-loops" data-bind="allowLoops"> <span>Allow chained redirects (disables loop protection for this rule)</span></label>
+					</div>
+				</div>
+				<div>
 					<label>Apply to:</label>
 					<div class="input-cell" id="apply-to" data-bind="appliesTo">
 						<label><input type="checkbox" checked="checked" value="main_frame"><span>Main window (address bar)</span></label>
@@ -228,6 +238,13 @@
 						</div>
 					</div>
 				<label id="storage-sync-option"><input type="checkbox" /> Enable Storage Sync</label>
+			</div>
+
+			<div id="variables-section">
+				<h4>Custom Variables</h4>
+				<p>Use <strong>[varName]</strong> in redirect URLs. Define one variable per line as <strong>name=value</strong>.</p>
+				<textarea id="variables-textarea" rows="5" placeholder="myVar=https://example.com&#10;apiKey=abc123"></textarea>
+				<button id="save-variables-btn" class="btn blue">Save Variables</button>
 			</div>
 
 			<footer>

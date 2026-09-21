@@ -32,6 +32,9 @@
 						</ol>
 					</li>
 					<li><a href="#applyto">Apply to</a></li>
+					<li><a href="#sourcepattern">Source pattern</a></li>
+					<li><a href="#allowloops">Allow chained redirects</a></li>
+					<li><a href="#customvariables">Custom variables</a></li>
 				</ul>
 			</li>
 			<li><a href="#wildcards">Wildcards</a></li>
@@ -85,10 +88,12 @@
             patterns can use wildcard characters or regular expressions like the include patterns.</li>
 
             <li><a name="redirectto"></a><strong>Redirect to:</strong> This is the url that you will be redirected to when you open any page where the url matches the
-            include pattern. You can use the special signs $1, $2, $3 etc. in the url, they will be replaced by the results of captures with regular
-            expressions or stars with wildcards. For instance, if you have the include pattern <span class="pattern">http://google.com/*</span>, redirect to <span class="pattern">http://froogle.com/$1</span>
+            include pattern. You can use the special signs $0, $1, $2, $3 etc. in the url. $0 is replaced by the full matched URL. $1, $2 etc. are replaced by the results of captures with regular
+            expressions or stars with wildcards (you can use more than nine: $10, $11, etc.). For instance, if you have the include pattern <span class="pattern">http://google.com/*</span>, redirect to <span class="pattern">http://froogle.com/$1</span>
             and you open the page <span class="url">http://google.com/foobar</span>, then you will be redirected to <span class="url">http://froogle.com/foobar</span>, since 'foobar' was what the star replaced. $1 is for the
             first star in the pattern, $2 for the second and so on. For regular expression $1 is for the first parentheses, $2 for the second etc.
+            <br><br>
+            You can also use <a href="#customvariables">custom variables</a> with the syntax <span class="pattern">[varName]</span>.
             <br><br>
             <strong>Data URIs:</strong> You can redirect to <code>data:</code> URLs to display custom content instead of loading a page. For example,
             redirecting to <span class="pattern">data:text/html,&lt;h1&gt;Blocked&lt;/h1&gt;</span> shows a custom block page.</li>
@@ -130,10 +135,28 @@
             <li><a name="applyto"></a><strong>Apply to:</strong> The Apply to option is new in version 3.0 of Redirector. For 99% of cases you won't need this, so don't worry about it.
             	By default Redirector only redirects requests from the address bar of your browser, the page you're viewing. It doesn't redirect requests for scripts, iframes, images
             	or anything else. Now in version 3.0 it is possible to opt into that however, and redirect any type of request. Just beware that this might have performance implications
-            	if you're redirecting all types of requests and you have many redirects. 
+            	if you're redirecting all types of requests and you have many redirects.
         	</li>
 
-            
+            <li><a name="sourcepattern"></a><strong>Source pattern:</strong> An optional wildcard or regex pattern that must match the
+            URL of the page that <em>initiated</em> the request. If set, the redirect only fires when the referring page matches.
+            In Chrome this is the origin of the request; in Firefox it is the full URL of the initiating page. Requests with no
+            detectable source (e.g. top-level navigation, typed URLs, HistoryState redirects) will not match when a source
+            pattern is set.</li>
+
+            <li><a name="allowloops"></a><strong>Allow chained redirects:</strong> By default Redirector prevents redirect loops
+            by adding the redirect target to an ignore list immediately after redirecting. This means a redirect target is never
+            re-redirected by another rule. Enabling <em>Allow chained redirects</em> on a rule disables this protection for that
+            specific rule, so the redirect target can be matched and redirected by subsequent rules. Use with care: it is possible
+            to create infinite loops if two rules chain back to each other with this option enabled.</li>
+
+            <li><a name="customvariables"></a><strong>Custom variables:</strong> A global variable store accessible in all
+            redirect URLs using the syntax <span class="pattern">[varName]</span>. Define variables in the <strong>Custom Variables</strong>
+            section at the bottom of the settings page, one per line as <code>name=value</code>. For example, if you define
+            <code>myProxy=https://proxy.example.com</code> then a redirect URL of <span class="pattern">[myProxy]/$1</span> will
+            expand to <span class="pattern">https://proxy.example.com/$1</span>. Variables are resolved after capture group
+            substitution. Unknown variable names are left as-is.</li>
+
 		</ul>
 
 		<a name="wildcards"></a>
@@ -148,7 +171,7 @@
 				<li><span class="pattern">http*://example.com</span> matches both <span class="url">http://example.com</span> and <span class="url">https://example.com</span>.</li>
 				<li><span class="pattern">http://example.com/index.asp*</span> matches <span class="url">http://example.com/index.asp</span>, <span class="url">http://example.com/index.asp?a=b&amp;c=d</span>.</li>
 			</ul>
-		$1, $2, $3 in the redirect urls will match the text that the stars matched. Examples:
+		$1, $2, $3 in the redirect urls will match the text that the stars matched. $0 contains the full matched URL. Examples:
 			<ul>
 				<li><span class="pattern">http://example.com/*</span> matches <span class="url">http://example.com/foobar</span>, $1 is foobar.</li>
 				<li><span class="pattern">http://*.example.com/*</span> matches <span class="url">http://www.example.com/foobar</span>, $1 is www, $2 is foobar.</li>

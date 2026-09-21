@@ -282,6 +282,33 @@ function cancelDeleteAll() {
 	hideForm("#delete-all-form");
 }
 
+function loadVariables() {
+	chrome.storage.local.get({ customVariables: {} }, function(obj) {
+		Redirect.customVariables = obj.customVariables;
+		const lines = Object.entries(obj.customVariables).map(([k, v]) => `${k}=${v}`).join("\n");
+		el("#variables-textarea").value = lines;
+	});
+}
+
+function saveVariables() {
+	const text = el("#variables-textarea").value.trim();
+	const vars = {};
+	for (const line of text.split("\n")) {
+		const trimmed = line.trim();
+		if (!trimmed) continue;
+		const eq = trimmed.indexOf("=");
+		if (eq > 0) {
+			const key = trimmed.substring(0, eq).trim();
+			const val = trimmed.substring(eq + 1);
+			if (key) vars[key] = val;
+		}
+	}
+	Redirect.customVariables = vars;
+	chrome.storage.local.set({ customVariables: vars }, function() {
+		showMessage("Variables saved.", true);
+	});
+}
+
 // All the setup stuff for the page
 function pageLoad() {
 	template = el("#redirect-row-template");
@@ -328,6 +355,8 @@ function pageLoad() {
 		el("#storage-sync-option input").checked = options.isSyncEnabled;
 	});
 
+	loadVariables();
+
 	if (navigator.userAgent.toLowerCase().indexOf("chrome") > -1) {
 		show("#storage-sync-option");
 	}
@@ -339,6 +368,7 @@ function pageLoad() {
 	el("#delete-all-btn").addEventListener("click", deleteAllRedirects);
 	el("#confirm-delete-all").addEventListener("click", confirmDeleteAll);
 	el("#cancel-delete-all").addEventListener("click", cancelDeleteAll);
+	el("#save-variables-btn").addEventListener("click", saveVariables);
 	el(".redirect-rows").addEventListener("click", function(ev) {
 		if (ev.target.type == "checkbox") {
 			ev.target.nextElementSibling.classList.add("checkMarked");

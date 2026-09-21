@@ -76,6 +76,7 @@ function editFormChange() {
 	activeRedirect.patternType = el("[name=\"patterntype\"]:checked").value;
 	activeRedirect.replaceAll = el("#replace-all").checked;
 	activeRedirect.usePatternForReplace = el("#use-pattern").checked;
+	activeRedirect.allowLoops = el("#allow-loops").checked;
 	// Keep replacePattern in sync with replaceFrom for compile()
 	activeRedirect.replacePattern = activeRedirect.replaceFrom;
 

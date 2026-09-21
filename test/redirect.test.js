@@ -515,3 +515,167 @@ describe("processMatchesExampleText getter", () => {
         expect(r.processMatchesExampleText).toMatch(/aHR0/);
     });
 });
+
+// ---------------------------------------------------------------------------
+// $0 capture group (full match)
+// ---------------------------------------------------------------------------
+
+describe("$0 capture group", () => {
+    test("wildcard: $0 expands to the full matched URL", () => {
+        const r = makeRedirect({
+            includePattern: "http://example.com/*",
+            redirectUrl: "http://other.com/copy?url=$0",
+        });
+        const result = r.getMatch("http://example.com/foo");
+        expect(result.isMatch).toBe(true);
+        expect(result.redirectTo).toBe("http://other.com/copy?url=http://example.com/foo");
+    });
+
+    test("regex: $0 expands to the full match", () => {
+        const r = makeRedirect({
+            patternType: "R",
+            includePattern: "^http://example\\.com/(.+)",
+            redirectUrl: "http://other.com/?orig=$0&path=$1",
+            exampleUrl: "http://example.com/hello",
+        });
+        const result = r.getMatch("http://example.com/hello");
+        expect(result.redirectTo).toBe("http://other.com/?orig=http://example.com/hello&path=hello");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// $10+ multi-digit capture groups (#369)
+// ---------------------------------------------------------------------------
+
+describe("$10+ multi-digit capture groups", () => {
+    test("$10 substitution with 11 capture groups", () => {
+        // Build a pattern with 11 capture groups
+        const r = makeRedirect({
+            patternType: "R",
+            includePattern: "^(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)$",
+            redirectUrl: "$1$10$11",
+            exampleUrl: "abcdefghijk",
+        });
+        const result = r.getMatch("abcdefghijk");
+        expect(result.isMatch).toBe(true);
+        expect(result.redirectTo).toBe("ajk");
+    });
+
+    test("$10 in redirectUrl with only 2 groups is replaced with empty string (not $1+0)", () => {
+        const r = makeRedirect({
+            patternType: "R",
+            includePattern: "^(a)(b)$",
+            redirectUrl: "$1$10$2",
+            exampleUrl: "ab",
+        });
+        const result = r.getMatch("ab");
+        // $10 is out of range, replaced with ""; $1="a", $2="b"
+        expect(result.redirectTo).toBe("ab");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// sourcePattern filtering (#436/#429)
+// ---------------------------------------------------------------------------
+
+describe("sourcePattern", () => {
+    test("redirect fires when sourceUrl matches source pattern", () => {
+        const r = makeRedirect({
+            sourcePattern: "http://trusted.com/*",
+        });
+        expect(r.getMatch("http://example.com/foo", false, "http://trusted.com/page").isMatch).toBe(true);
+    });
+
+    test("redirect does not fire when sourceUrl does not match source pattern", () => {
+        const r = makeRedirect({
+            sourcePattern: "http://trusted.com/*",
+        });
+        expect(r.getMatch("http://example.com/foo", false, "http://other.com/page").isMatch).toBe(false);
+    });
+
+    test("redirect does not fire when sourceUrl is empty and source pattern is set", () => {
+        const r = makeRedirect({
+            sourcePattern: "http://trusted.com/*",
+        });
+        expect(r.getMatch("http://example.com/foo", false, "").isMatch).toBe(false);
+    });
+
+    test("redirect fires when no source pattern is set (regardless of sourceUrl)", () => {
+        const r = makeRedirect();
+        expect(r.getMatch("http://example.com/foo", false, "http://anywhere.com/").isMatch).toBe(true);
+        expect(r.getMatch("http://example.com/foo", false, "").isMatch).toBe(true);
+    });
+
+    test("source check is skipped when sourceUrl is undefined (preview mode)", () => {
+        const r = makeRedirect({ sourcePattern: "http://trusted.com/*" });
+        // No sourceUrl argument: skip source check
+        expect(r.getMatch("http://example.com/foo", true).isMatch).toBe(true);
+    });
+
+    test("sourcePattern included in toObject and equals", () => {
+        const r1 = makeRedirect({ sourcePattern: "http://a.com/*" });
+        const r2 = makeRedirect({ sourcePattern: "http://b.com/*" });
+        expect(r1.equals(r2)).toBe(false);
+        expect(r1.toObject().sourcePattern).toBe("http://a.com/*");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// allowLoops flag (#464)
+// ---------------------------------------------------------------------------
+
+describe("allowLoops", () => {
+    test("defaults to false", () => {
+        const r = new Redirect();
+        expect(r.allowLoops).toBe(false);
+    });
+
+    test("stored and retrieved in toObject", () => {
+        const r = makeRedirect({ allowLoops: true });
+        expect(r.toObject().allowLoops).toBe(true);
+    });
+
+    test("included in equals comparison", () => {
+        const r1 = makeRedirect({ allowLoops: false });
+        const r2 = makeRedirect({ allowLoops: true });
+        expect(r1.equals(r2)).toBe(false);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Custom variables (#391)
+// ---------------------------------------------------------------------------
+
+describe("custom variables", () => {
+    test("[varName] in redirectUrl is substituted with the stored value", () => {
+        Redirect.customVariables = { dest: "https://newsite.com" };
+        const r = makeRedirect({
+            includePattern: "http://example.com/*",
+            redirectUrl: "[dest]/$1",
+        });
+        const result = r.getMatch("http://example.com/path");
+        expect(result.redirectTo).toBe("https://newsite.com/path");
+        Redirect.customVariables = {};
+    });
+
+    test("unknown [varName] is left as-is", () => {
+        Redirect.customVariables = {};
+        const r = makeRedirect({
+            includePattern: "http://example.com/*",
+            redirectUrl: "[unknown]/$1",
+        });
+        const result = r.getMatch("http://example.com/path");
+        expect(result.redirectTo).toBe("[unknown]/path");
+    });
+
+    test("multiple variables in one redirectUrl", () => {
+        Redirect.customVariables = { proto: "https", host: "newsite.com" };
+        const r = makeRedirect({
+            includePattern: "http://example.com/*",
+            redirectUrl: "[proto]://[host]/$1",
+        });
+        const result = r.getMatch("http://example.com/page");
+        expect(result.redirectTo).toBe("https://newsite.com/page");
+        Redirect.customVariables = {};
+    });
+});

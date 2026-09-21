@@ -59,6 +59,24 @@ function setIcon(image) {
 	});
 }
 
+// Returns true if the URL is being redirected too frequently and should be ignored.
+// Updates the justRedirected tracking structure as a side effect.
+function isRedirectLoop(url) {
+	const data = justRedirected[url];
+	const threshold = 3000;
+	if (!data || ((new Date().getTime() - data.timestamp) > threshold)) {
+		justRedirected[url] = { timestamp: new Date().getTime(), count: 1 };
+		return false;
+	}
+	data.count++;
+	justRedirected[url] = data;
+	if (data.count >= redirectThreshold) {
+		log(`Ignoring ${url} because we have redirected it ${data.count} times in the last ${threshold}ms`);
+		return true;
+	}
+	return false;
+}
+
 // This is the actual function that gets called for each request and must
 // decide whether or not we want to redirect.
 function checkRedirects(details) {
@@ -86,32 +104,22 @@ function checkRedirects(details) {
 
 	for (let i = 0; i < list.length; i++) {
 		const r = list[i];
-		const result = r.getMatch(details.url);
+		const sourceUrl = details.initiator || details.originUrl || "";
+		const result = r.getMatch(details.url, false, sourceUrl);
 
 		if (result.isMatch) {
 
-			// Check if we're stuck in a loop where we keep redirecting this, in that
-			// case ignore!
-			const data = justRedirected[details.url];
-
-			const threshold = 3000;
-			if (!data || ((new Date().getTime() - data.timestamp) > threshold)) { // Obsolete after 3 seconds
-				justRedirected[details.url] = { timestamp: new Date().getTime(), count: 1 };
-			} else {
-				data.count++;
-				justRedirected[details.url] = data;
-				if (data.count >= redirectThreshold) {
-					log(`Ignoring ${details.url} because we have redirected it ${data.count} times in the last ${threshold}ms`);
-					return {};
-				}
+			if (!r.allowLoops && isRedirectLoop(details.url)) {
+				return {};
 			}
 
-
-		log(`Redirecting ${details.method.toUpperCase()} ${details.url} ===> ${result.redirectTo}, type: ${details.type}, pattern: ${r.includePattern} which is in Rule : ${r.description}`);
+			log(`Redirecting ${details.method.toUpperCase()} ${details.url} ===> ${result.redirectTo}, type: ${details.type}, pattern: ${r.includePattern} which is in Rule : ${r.description}`);
 			if (enableNotifications) {
 				sendNotifications(r, details.url, result.redirectTo);
 			}
-			ignoreNextRequest[result.redirectTo] = new Date().getTime();
+			if (!r.allowLoops) {
+				ignoreNextRequest[result.redirectTo] = new Date().getTime();
+			}
 
 			return { redirectUrl: result.redirectTo };
 		}
@@ -155,6 +163,9 @@ function monitorChanges(changes) {
 	if (changes.enablePost) {
 		log(`Enable POST setting has changed to ${changes.enablePost.newValue}`);
 		enablePost = changes.enablePost.newValue;
+	}
+	if (changes.customVariables) {
+		Redirect.customVariables = changes.customVariables.newValue || {};
 	}
 }
 chrome.storage.onChanged.addListener(monitorChanges);
@@ -502,6 +513,10 @@ function setupInitial() {
 
 	chrome.storage.local.get({ enablePost: false }, function(obj) {
 		enablePost = obj.enablePost;
+	});
+
+	chrome.storage.local.get({ customVariables: {} }, function(obj) {
+		Redirect.customVariables = obj.customVariables;
 	});
 
 	chrome.storage.local.get({

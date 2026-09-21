@@ -589,6 +589,35 @@ footer small a:hover {
   margin:10px;
 }
 
+#variables-section {
+  margin-top: 20px;
+  padding: 10px 0;
+  border-top: solid 1px #bbb;
+}
+
+#variables-section h4 {
+  margin: 0 0 6px;
+}
+
+#variables-section p {
+  margin: 0 0 6px;
+  font-size: 0.9em;
+  color: #555;
+}
+
+#variables-textarea {
+  width: 100%;
+  font-family: monospace;
+  font-size: 0.9em;
+  padding: 6px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+#save-variables-btn {
+  margin-top: 6px;
+}
+
 /* Mobile layout */
 
 @media only screen and (width <= 767px) {
