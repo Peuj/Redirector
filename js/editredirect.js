@@ -2,14 +2,14 @@
 
 let activeRedirect = null;
 
-function createNewRedirect() {
+const createNewRedirect = () => {
 	activeRedirect = new Redirect();
 	el("#edit-redirect-form h3").textContent = "Create Redirect";
 	showForm("#edit-redirect-form", activeRedirect);
 	el("#btn-save-redirect").setAttribute("disabled", "disabled");
-}
+};
 
-function editRedirect(index) {
+const editRedirect = (index) => {
 	el("#edit-redirect-form h3").textContent = "Edit Redirect";
 	activeRedirect = new Redirect(REDIRECTS[index]); // Make a new one, which we can dump a bunch of stuff on...
 	activeRedirect.existing = true;
@@ -17,15 +17,15 @@ function editRedirect(index) {
 	toggleReplaceProcessForm(activeRedirect.processMatches);
 	showForm("#edit-redirect-form", activeRedirect);
 	setTimeout(() => el("input[data-bind=\"description\"]").focus(), 200); // Why not working...?
-}
+};
 
-function cancelEdit() {
+const cancelEdit = () => {
 	toggleReplaceProcessForm(null, true);
 	activeRedirect = null;
 	hideForm("#edit-redirect-form");
-}
+};
 
-function saveRedirect() {
+const saveRedirect = () => {
 	const savedRedirect = new Redirect(activeRedirect);
 	if (activeRedirect.existing) {
 		REDIRECTS[activeRedirect.index] = savedRedirect; // To strip out any extra crap we've added
@@ -39,9 +39,9 @@ function saveRedirect() {
 	updateBindings();
 	saveChanges();
 	hideForm("#edit-redirect-form");
-}
+};
 
-function toggleAdvancedOptions(ev) {
+const toggleAdvancedOptions = (ev) => {
 	ev.preventDefault();
 	const advancedOptions = el(".advanced");
 	if (advancedOptions.classList.contains("hidden")) {
@@ -51,17 +51,17 @@ function toggleAdvancedOptions(ev) {
 		advancedOptions.classList.add("hidden");
 		el("#advanced-toggle a").textContent = "Show advanced options...";
 	}
-}
+};
 
-function toggleReplaceProcessForm(currentProcess, forceHide) {
+const toggleReplaceProcessForm = (currentProcess, forceHide) => {
 	const shouldHide = forceHide !== undefined ? forceHide : currentProcess !== "replace";
 	for (const input of document.querySelectorAll(".replace-process-input")) {
 		input.classList.toggle("hidden", shouldHide);
 	}
-}
+};
 
 
-function editFormChange() {
+const editFormChange = () => {
 	// Now read values back from the form...
 	for (const input of el("#edit-redirect-form").querySelectorAll("input[type=\"text\"][data-bind]")) {
 		const prop = input.getAttribute("data-bind");
@@ -85,31 +85,31 @@ function editFormChange() {
 	activeRedirect.updateExampleResult();
 
 	dataBind("#edit-redirect-form", activeRedirect);
-}
+};
 
 
 let deleteIndex;
-function confirmDeleteRedirect(index) {
+const confirmDeleteRedirect = (index) => {
 	deleteIndex = index;
-		const redirect = REDIRECTS[deleteIndex];
-		showForm("#delete-redirect-form", redirect);
-}
+	const redirect = REDIRECTS[deleteIndex];
+	showForm("#delete-redirect-form", redirect);
+};
 
-function deleteRedirect() {
+const deleteRedirect = () => {
 	REDIRECTS.splice(deleteIndex, 1);
 	const node = el(`.redirect-row[data-index="${deleteIndex}"]`);
 	node.parentNode.removeChild(node);
 	updateBindings();
 	saveChanges();
 	hideForm("#delete-redirect-form");
-}
+};
 
-function cancelDelete() {
+const cancelDelete = () => {
 	hideForm("#delete-redirect-form");
-}
+};
 
 
-function setupEditAndDeleteEventListeners() {
+const setupEditAndDeleteEventListeners = () => {
 
 	el("#btn-save-redirect").addEventListener("click", saveRedirect);
 	el("#btn-cancel-edit").addEventListener("click", cancelEdit);
@@ -122,7 +122,9 @@ function setupEditAndDeleteEventListeners() {
 	el("#create-new-redirect").addEventListener("click", createNewRedirect);
 	// Listen to any change from the edit form...
 	el("#edit-redirect-form").addEventListener("input", editFormChange);
-}
+
+	Object.assign(dataActions, { editRedirect, confirmDeleteRedirect });
+};
 
 
 setupEditAndDeleteEventListeners();

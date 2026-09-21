@@ -1,8 +1,8 @@
-function dataBind(root, dataObject) {
+const dataBind = (root, dataObject) => {
 
-	function boolValue(prop) {
+	const boolValue = (prop) => {
 		return prop.charAt(0) === "!" ? !dataObject[prop.substr(1)] : dataObject[prop];
-	}
+	};
 
 	const elem = typeof root === "string" ? document.querySelector(root) : root;
 	for (const tag of elem.querySelectorAll("[data-bind]")) {
@@ -59,41 +59,39 @@ function dataBind(root, dataObject) {
 			tag.classList.remove(className);
 		}
 	}
-}
+};
 
-function show(id) {
+const show = (id) => {
 	const elem = document.querySelector(id);
 	elem.style.display = "block";
-}
+};
 
-function hide(id) {
+const hide = (id) => {
 	const elem = document.querySelector(id);
 	elem.style.display = "none";
-}
+};
 
-function el(query) {
-	return document.querySelector(query);
-}
+const el = (query) => document.querySelector(query);
 
-function showForm(selector, dataObject) {
+const showForm = (selector, dataObject) => {
 	dataBind(selector, dataObject);
 	el("#blur-wrapper").classList.add("blur");
 	show("#cover");
 	show(selector);
-}
+};
 
-function move(arr, from, to) {
+const move = (arr, from, to) => {
     arr.splice(to, 0, arr.splice(from, 1)[0]);
-}
+};
 
-function hideForm(selector) {
+const hideForm = (selector) => {
 	hide("#cover");
 	hide(selector);
 	el("#blur-wrapper").classList.remove("blur");
-}
+};
 
 // Shows a message bar above the list of redirects.
-function showMessage(message, success) {
+const showMessage = (message, success) => {
 	const messageBox = document.getElementById("message-box");
 	dataBind("#message-box", { message });
 	if (success) {
@@ -105,13 +103,13 @@ function showMessage(message, success) {
 	const timer = 20;
 
 	// Remove the message in 20 seconds if it hasn't been changed...
-	setTimeout(function() {
+	setTimeout(() => {
 		if (el("#message").textContent === message) {
 			messageBox.className = ""; // Removing .visible removes the box...
 		}
 	}, timer * 1000);
-}
+};
 
-function hideMessage() {
+const hideMessage = () => {
 	el("#message-box").className = "";
-}
+};

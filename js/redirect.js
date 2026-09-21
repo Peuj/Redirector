@@ -16,7 +16,7 @@ Redirect.customVariables = {};
 
 // Returns an error string if the pattern is unsafe to run in a blocking webRequest listener, null if safe.
 // Only call with isRegex=true for REGEX-type patterns; wildcard patterns escape special chars and can't have backreferences.
-Redirect.validateRegexSafety = function(pattern, isRegex) {
+Redirect.validateRegexSafety = (pattern, isRegex) => {
     if (!pattern) return null;
     if (pattern.length > 2000) return "Pattern too long (max 2000 characters)";
     // Backreferences bypass V8's linear-time engine and can cause catastrophic backtracking on carefully crafted URLs

@@ -1,13 +1,13 @@
 
-function displayOrganizeModeMessage() {
+const displayOrganizeModeMessage = () => {
     if (el("#message-box").classList.contains("visible")) {
         hideMessage();
     } else {
         showMessage("Use ⟱ to move a redirect to the bottom, ⟰ to move to the top, and use the checkboxes to select multiple redirects.", true);
     }
-}
+};
 
-function organizeModeToggle(ev) {
+const organizeModeToggle = (ev) => {
     ev.preventDefault();
     const organizeModes = [".groupings", ".arrows"];
     for (const mode of organizeModes) {
@@ -27,11 +27,11 @@ function organizeModeToggle(ev) {
     !buttonClasses.contains("active") ? el("#organize-mode").classList.add("active") : el("#organize-mode").classList.remove("active");
 
     displayOrganizeModeMessage();
-}
+};
 
 
-function setupOrganizeModeToggleEventListener() {
+const setupOrganizeModeToggleEventListener = () => {
     el("#organize-mode").addEventListener("click", organizeModeToggle);
-}
+};
 
 setupOrganizeModeToggleEventListener();

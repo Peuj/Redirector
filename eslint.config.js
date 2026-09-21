@@ -29,6 +29,7 @@ module.exports = [
                 move: "writable",
                 // Cross-file globals: redirectorpage.js → editredirect.js, importexport.js, organizemode.js
                 REDIRECTS: "writable",
+                dataActions: "writable",
                 saveChanges: "writable",
                 renderRedirects: "writable",
                 updateBindings: "writable",

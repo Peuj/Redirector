@@ -2,19 +2,18 @@ const REDIRECTS = []; // The global redirects list...
 const options = {
 	isSyncEnabled: false
 };
+const dataActions = {};
 let template;
 
-function normalize(r) {
-	return new Redirect(r).toObject(); // Cleans out any extra props, and adds default values for missing ones.
-}
+const normalize = (r) => new Redirect(r).toObject(); // Cleans out any extra props, and adds default values for missing ones.
 
 // Saves the entire list of redirects to storage.
-function saveChanges() {
+const saveChanges = () => {
 
 	// Clean them up so angular $$hash things and stuff don't get serialized.
 	const arr = REDIRECTS.map(normalize);
 
-	chrome.runtime.sendMessage({ type: "save-redirects", redirects: arr }, function(response) {
+	chrome.runtime.sendMessage({ type: "save-redirects", redirects: arr }, (response) => {
 		console.log(response.message);
 		if (response.message.indexOf("Redirects failed to save") > -1) {
 			showMessage(response.message, false);
@@ -22,11 +21,11 @@ function saveChanges() {
 			console.log(`Saved ${arr.length} redirects at ${new Date()}. Message from background page:${response.message}`);
 		}
 	});
-}
+};
 
-function toggleSyncSetting() {
+const toggleSyncSetting = () => {
 	const isChecked = el("#storage-sync-option input").checked;
-	chrome.runtime.sendMessage({ type: "toggle-sync", isSyncEnabled: isChecked }, function(response) {
+	chrome.runtime.sendMessage({ type: "toggle-sync", isSyncEnabled: isChecked }, (response) => {
 		if (response.message === "sync-enabled") {
 			options.isSyncEnabled = true;
 			showMessage("Sync is enabled!", true);
@@ -35,19 +34,18 @@ function toggleSyncSetting() {
 			showMessage("Sync is disabled - local storage will be used!", true);
 		} else if (response.message.indexOf("Sync Not Possible") > -1) {
 			options.isSyncEnabled = false;
-			chrome.storage.local.set({ isSyncEnabled: options.isSyncEnabled }, function() {
+			chrome.storage.local.set({ isSyncEnabled: options.isSyncEnabled }, () => {
 			 // console.log("set back to false");
 			});
 			showMessage(response.message, false);
-		}
-		else {
+		} else {
 			showMessage("Error occured when trying to change Sync settings. Look at the logs and raise an issue", false);
 		}
 		el("#storage-sync-option input").checked = options.isSyncEnabled;
 	});
-}
+};
 
-function renderRedirects() {
+const renderRedirects = () => {
 	el(".redirect-rows").textContent = "";
 	for (let i = 0; i < REDIRECTS.length; i++) {
 		const r = REDIRECTS[i];
@@ -58,9 +56,9 @@ function renderRedirects() {
 		el(".redirect-rows").appendChild(node);
 	}
 	updateExportLink();
-}
+};
 
-function renderSingleRedirect(node, redirect, index) {
+const renderSingleRedirect = (node, redirect, index) => {
 
 	// Add extra props to help with rendering...
 	if (index === 0) {
@@ -88,10 +86,10 @@ function renderSingleRedirect(node, redirect, index) {
 	delete redirect.$first;
 	delete redirect.$last;
 	delete redirect.$index;
-}
+};
 
 
-function updateBindings() {
+const updateBindings = () => {
 
 	const nodes = document.querySelectorAll(".redirect-row");
 
@@ -104,9 +102,9 @@ function updateBindings() {
 		const redirect = REDIRECTS[i];
 		renderSingleRedirect(node, redirect, i);
 	}
-}
+};
 
-function duplicateRedirect(index) {
+const duplicateRedirect = (index) => {
 	const redirect = new Redirect(REDIRECTS[index]);
 	REDIRECTS.splice(index, 0, redirect);
 
@@ -115,16 +113,16 @@ function duplicateRedirect(index) {
 	el(".redirect-rows").appendChild(newNode);
 	updateBindings();
 	saveChanges();
-}
+};
 
-function checkIfGroupingExists() {
+const checkIfGroupingExists = () => {
 	const grouping = REDIRECTS.map((row, i) => ({ row, index: i })).
 									filter(result => result.row.grouped).
 									sort((a, b) => a.index - b.index);
 	return grouping;
-}
+};
 
-function toggleDisabled(index) {
+const toggleDisabled = (index) => {
 	const grouping = checkIfGroupingExists();
 
 	if (grouping && grouping.length > 1) {
@@ -142,24 +140,24 @@ function toggleDisabled(index) {
 
 	updateBindings();
 	saveChanges();
-}
+};
 
-function clearGrouping(elm) {
+const clearGrouping = (elm) => {
 	elm.classList.remove("grouped");
 	const checkMarkElm = elm.querySelector("label > .groupings");
 	const toggleBoxElm = elm.querySelector("input");
 	checkMarkElm.classList.remove("checkMarked");
 	toggleBoxElm.classList.remove("checked");
-}
+};
 
-function swap(node1, node2) {
+const swap = (node1, node2) => {
     const afterNode2 = node2.nextElementSibling;
     const parent = node2.parentNode;
     node1.replaceWith(node2);
     parent.insertBefore(node1, afterNode2);
-}
+};
 
-function groupedMoveDown(group) {
+const groupedMoveDown = (group) => {
 		let jumpLength = 1;
 
 		if (isGroupAdjacent(group)) {
@@ -183,9 +181,9 @@ function groupedMoveDown(group) {
 
 	updateBindings();
 	saveChanges();
-}
+};
 
-function isGroupAdjacent(grouping) {
+const isGroupAdjacent = (grouping) => {
 	const distances = [];
 	for (let i = grouping.length - 1; i >= 0; i--) {
 		if (i != 0) {
@@ -193,9 +191,9 @@ function isGroupAdjacent(grouping) {
 		}
 	}
 	return distances.every(distance => distance === 1);
-}
+};
 
-function groupedMoveUp(group) {
+const groupedMoveUp = (group) => {
 	let jumpLength = 1;
 
 	if (isGroupAdjacent(group)) {
@@ -222,8 +220,9 @@ function groupedMoveUp(group) {
 
 	updateBindings();
 	saveChanges();
-}
-function moveUp(index) {
+};
+
+const moveUp = (index) => {
 	const grouping = checkIfGroupingExists();
 
 	if (grouping.length > 1) {
@@ -236,9 +235,9 @@ function moveUp(index) {
 
 	updateBindings();
 	saveChanges();
-}
+};
 
-function moveDown(index) {
+const moveDown = (index) => {
 	const grouping = checkIfGroupingExists();
 
 	if (grouping.length > 1) {
@@ -250,47 +249,47 @@ function moveDown(index) {
 	}
 	updateBindings();
 	saveChanges();
-}
+};
 
-function moveUpTop(index) {
+const moveUpTop = (index) => {
 	const top = REDIRECTS[0];
 	move(REDIRECTS, index, top);
 	updateBindings();
 	saveChanges();
-}
+};
 
-function moveDownBottom(index) {
+const moveDownBottom = (index) => {
 	const bottom = REDIRECTS.length - 1;
 	move(REDIRECTS, index, bottom);
 	updateBindings();
 	saveChanges();
-}
+};
 
-function deleteAllRedirects() {
+const deleteAllRedirects = () => {
 	showForm("#delete-all-form");
-}
+};
 
-function confirmDeleteAll() {
+const confirmDeleteAll = () => {
 	REDIRECTS.splice(0);
 	renderRedirects();
 	saveChanges();
 	hideForm("#delete-all-form");
 	showMessage("All redirects have been deleted.", true);
-}
+};
 
-function cancelDeleteAll() {
+const cancelDeleteAll = () => {
 	hideForm("#delete-all-form");
-}
+};
 
-function loadVariables() {
-	chrome.storage.local.get({ customVariables: {} }, function(obj) {
+const loadVariables = () => {
+	chrome.storage.local.get({ customVariables: {} }, (obj) => {
 		Redirect.customVariables = obj.customVariables;
 		const lines = Object.entries(obj.customVariables).map(([k, v]) => `${k}=${v}`).join("\n");
 		el("#variables-textarea").value = lines;
 	});
-}
+};
 
-function saveVariables() {
+const saveVariables = () => {
 	const text = el("#variables-textarea").value.trim();
 	const vars = {};
 	for (const line of text.split("\n")) {
@@ -304,19 +303,19 @@ function saveVariables() {
 		}
 	}
 	Redirect.customVariables = vars;
-	chrome.storage.local.set({ customVariables: vars }, function() {
+	chrome.storage.local.set({ customVariables: vars }, () => {
 		showMessage("Variables saved.", true);
 	});
-}
+};
 
 // All the setup stuff for the page
-function pageLoad() {
+const pageLoad = () => {
 	template = el("#redirect-row-template");
 	template.parentNode.removeChild(template);
 
 	// Need to proxy this through the background page, because Firefox gives us dead objects
 	// nonsense when accessing chrome.storage directly.
-	chrome.runtime.sendMessage({ type: "get-redirects" }, function(response) {
+	chrome.runtime.sendMessage({ type: "get-redirects" }, (response) => {
 		console.log(`Received redirects message, count=${response.redirects.length}`);
 		for (let i = 0; i < response.redirects.length; i++) {
 			REDIRECTS.push(new Redirect(response.redirects[i]));
@@ -346,7 +345,7 @@ function pageLoad() {
 		renderRedirects();
 	});
 
-	chrome.runtime.sendMessage({ type: "get-sync-state" }, function(response) {
+	chrome.runtime.sendMessage({ type: "get-sync-state" }, (response) => {
 		if (response && response.isSyncEnabled !== undefined) {
 			options.isSyncEnabled = response.isSyncEnabled;
 		} else {
@@ -369,7 +368,7 @@ function pageLoad() {
 	el("#confirm-delete-all").addEventListener("click", confirmDeleteAll);
 	el("#cancel-delete-all").addEventListener("click", cancelDeleteAll);
 	el("#save-variables-btn").addEventListener("click", saveVariables);
-	el(".redirect-rows").addEventListener("click", function(ev) {
+	el(".redirect-rows").addEventListener("click", (ev) => {
 		if (ev.target.type == "checkbox") {
 			ev.target.nextElementSibling.classList.add("checkMarked");
 			ev.target.parentElement.parentElement.classList.add("grouped");
@@ -384,29 +383,39 @@ function pageLoad() {
 			return;
 		}
 
-		const handler = window[action];
+		const handler = dataActions[action];
 
 		const index = parseInt(ev.target.getAttribute("data-index"), 10);
 
 		handler(index);
 	});
-}
+};
 
-function updateFavicon(e) {
+const updateFavicon = (e) => {
 	const type = e.matches ? "dark" : "light";
 	el("link[rel=\"shortcut icon\"]").href = `images/icon-${type}-theme-32.png`;
 	chrome.runtime.sendMessage({ type: "update-icon" }); // Only works if this page is open, but still, better than nothing...
-}
+};
 
 const mql = window.matchMedia("(prefers-color-scheme:dark)");
 
 mql.onchange = updateFavicon;
 updateFavicon(mql);
 
-function toggleGrouping(index) {
+const toggleGrouping = (index) => {
 	if (REDIRECTS[index]) {
 		REDIRECTS[index].grouped = !REDIRECTS[index].grouped;
 	}
-}
+};
+
+Object.assign(dataActions, {
+	toggleDisabled,
+	moveUpTop,
+	moveUp,
+	moveDown,
+	moveDownBottom,
+	duplicateRedirect,
+	toggleGrouping
+});
 
 pageLoad();

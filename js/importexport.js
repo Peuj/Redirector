@@ -1,5 +1,5 @@
 // Shows a message explaining how many redirects were imported.
-function showImportedMessage(imported, existing, unsafe) {
+const showImportedMessage = (imported, existing, unsafe) => {
 	const parts = [];
 	let success = false;
 
@@ -21,17 +21,17 @@ function showImportedMessage(imported, existing, unsafe) {
 	} else {
 		showMessage(parts.join(" "), success);
 	}
-}
+};
 
-function importRedirects(ev) {
-	
+const importRedirects = (ev) => {
+
 	const file = ev.target.files[0];
 	if (!file) {
 		return;
 	}
 	const reader = new FileReader();
-	
-	reader.onload = function() {
+
+	reader.onload = () => {
 		let data;
 		try {
 			data = JSON.parse(reader.result);
@@ -78,35 +78,28 @@ function importRedirects(ev) {
 	} catch (e) {
 		showMessage("Failed to read import file");
 	}
-}
+};
 
-function updateExportLink() {
-	const redirects = REDIRECTS.map(function(r) {
-		return new Redirect(r).toObject();
-	});
+const updateExportLink = () => {
+	const redirects = REDIRECTS.map((r) => new Redirect(r).toObject());
 
 	const	version = chrome.runtime.getManifest().version;
 
-	const exportObj = { 
-		createdBy: `Redirector v${version}`, 
-		createdAt: new Date(), 
-		redirects 
+	const exportObj = {
+		createdBy: `Redirector v${version}`,
+		createdAt: new Date(),
+		redirects
 	};
 
 	const json = JSON.stringify(exportObj, null, 4);
 
 	// Using encodeURIComponent here instead of base64 because base64 always messed up our encoding for some reason...
-	el("#export-link").href = `data:text/plain;charset=utf-8,${encodeURIComponent(json)}`; 
-}
+	el("#export-link").href = `data:text/plain;charset=utf-8,${encodeURIComponent(json)}`;
+};
 
 updateExportLink();
 
-function setupImportExportEventListeners() {
-	el("#import-file").addEventListener("change", importRedirects);
-	el("#export-link").addEventListener("click", updateExportLink);
-}
-
-function exportSingleRedirect(index) {
+const exportSingleRedirect = (index) => {
 	const redirect = REDIRECTS[index];
 	if (!redirect) {
 		showMessage("Redirect not found");
@@ -130,6 +123,12 @@ function exportSingleRedirect(index) {
 	document.body.removeChild(link);
 
 	showMessage(`Successfully exported: ${redirect.description || "Unnamed redirect"}`, true);
-}
+};
+
+const setupImportExportEventListeners = () => {
+	el("#import-file").addEventListener("change", importRedirects);
+	el("#export-link").addEventListener("click", updateExportLink);
+	Object.assign(dataActions, { exportSingleRedirect });
+};
 
 setupImportExportEventListeners();
