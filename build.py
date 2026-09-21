@@ -49,9 +49,10 @@ def create_addon(files, browser):
 
 			if browser == 'firefox':
 				# Firefox MV3 EventPage: uses scripts array, needs webRequestBlocking for blocking listeners
-				manifest['permissions'].append('webRequestBlocking')
+				pass
 			else:
 				# Chrome/Edge/Opera MV3: service worker background + declarativeNetRequest
+				manifest['permissions'].remove('webRequestBlocking')
 				del manifest['browser_specific_settings']
 				manifest['background'] = {'service_worker': 'js/background.js'}
 				manifest['permissions'].append('declarativeNetRequest')
