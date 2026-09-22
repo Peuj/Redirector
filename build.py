@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 
-import os, os.path, re, zipfile, json
+import os, os.path, re, zipfile, json, subprocess
 
 def get_files_to_zip():
 	#Exclude git stuff, build scripts etc.
 	exclude = [
 		r'\.(py|sh|pem)$', #file endings
 		r'(\\|/)\.', #hidden files
-		r'package\.json|icon\.html', #file names
-		r'(\\|/)(promo|unittest|build)(\\|/)' #folders
+		r'package(-lock)?\.json|icon\.html', #file names
+		r'(\\|/)(promo|unittest|build|node_modules)(\\|/)' #folders
 	]
 
 	zippable_files = []
@@ -32,44 +32,43 @@ def create_addon(files, browser):
 		ext = 'zip'
 
 	output_file = os.path.join(output_folder, f'redirector-{browser}.{ext}')
-	zf = zipfile.ZipFile(output_file, 'w', zipfile.ZIP_STORED)
 	cert = 'extension-certificate.pem'
 
 	print('')
-	print(f'**** Creating addon for ${browser} ****')
+	print(f'**** Creating addon for {browser} ****')
 
 	if browser == 'opera' and not os.path.exists(cert):
-		print('Extension certificate does not exist, cannot create .nex file for Opera')
-		return
+		print('Extension certificate does not exist, creating .zip only (no .nex)')
 
-	for f in files:
-		print('Adding', f)
-		if f.endswith('manifest.json'):
-			manifest = json.load(open(f))
+	with zipfile.ZipFile(output_file, 'w', zipfile.ZIP_STORED) as zf:
+		for f in files:
+			print('Adding', f)
+			if f.endswith('manifest.json'):
+				with open(f, encoding='utf-8') as fh:
+					manifest = json.load(fh)
 
-			if browser == 'firefox':
-				# Firefox MV3 EventPage: uses scripts array, needs webRequestBlocking for blocking listeners
-				pass
+				if browser == 'firefox':
+					# Firefox MV3 EventPage: uses scripts array, needs webRequestBlocking for blocking listeners
+					pass
+				else:
+					# Chrome/Edge/Opera MV3: service worker background + declarativeNetRequest
+					if 'webRequestBlocking' in manifest['permissions']:
+						manifest['permissions'].remove('webRequestBlocking')
+					del manifest['browser_specific_settings']
+					manifest['background'] = {'service_worker': 'js/background.js'}
+					manifest['permissions'].append('declarativeNetRequest')
+
+				if browser in ('chrome', 'edge', 'opera'):
+					# These browsers open options in a new tab; the popup layout looks wrong there
+					manifest['options_ui']['page'] = 'redirector.html'
+
+				zf.writestr(f[2:], json.dumps(manifest, indent=2))
 			else:
-				# Chrome/Edge/Opera MV3: service worker background + declarativeNetRequest
-				manifest['permissions'].remove('webRequestBlocking')
-				del manifest['browser_specific_settings']
-				manifest['background'] = {'service_worker': 'js/background.js'}
-				manifest['permissions'].append('declarativeNetRequest')
+				zf.write(f, f[2:])
 
-			if browser == 'opera':
-				# Opera opens options in new tab; the popup layout looks wrong there
-				manifest['options_ui']['page'] = 'redirector.html'
-
-			zf.writestr(f[2:], json.dumps(manifest, indent=2))
-		else:
-			zf.write(f[2:])
-
-	zf.close()
-
-	if browser == 'opera':
+	if browser == 'opera' and os.path.exists(cert):
 		#Create .nex
-		os.system('./nex-build.sh %s %s %s' % (output_file, output_file.replace('.zip', '.nex'), cert))
+		subprocess.run(['bash', 'nex-build.sh', output_file, output_file.replace('.zip', '.nex'), cert], check=False)
 
 
 

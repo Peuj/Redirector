@@ -1,16 +1,17 @@
 const dataBind = (root, dataObject) => {
 
 	const boolValue = (prop) => {
-		return prop.charAt(0) === "!" ? !dataObject[prop.substr(1)] : dataObject[prop];
+		return prop.charAt(0) === "!" ? !dataObject[prop.slice(1)] : dataObject[prop];
 	};
 
 	const elem = typeof root === "string" ? document.querySelector(root) : root;
 	for (const tag of elem.querySelectorAll("[data-bind]")) {
 			const prop = tag.getAttribute("data-bind");
 		if (tag.tagName.toLowerCase() === "input") {
-			if (tag.getAttribute("type").toLowerCase() === "radio") {
+			const type = (tag.getAttribute("type") || "").toLowerCase();
+			if (type === "radio") {
 				tag.checked = dataObject[prop] === tag.getAttribute("value");
-            } else if (tag.getAttribute("type").toLowerCase() === "checkbox") {
+            } else if (type === "checkbox") {
                 tag.checked = dataObject[prop];
             } else {
                 tag.value = dataObject[prop];
@@ -27,7 +28,7 @@ const dataBind = (root, dataObject) => {
 			}
 		} else if (Array.isArray(dataObject[prop])) {
 			// Array of values, check any checkboxes in child elements
-			for (const checkbox of tag.querySelectorAll("input[type=\"checkbox\"")) {
+			for (const checkbox of tag.querySelectorAll("input[type=\"checkbox\"]")) {
 				checkbox.checked = dataObject[prop].includes(checkbox.getAttribute("value"));
 			}
 
@@ -63,12 +64,12 @@ const dataBind = (root, dataObject) => {
 
 const show = (id) => {
 	const elem = document.querySelector(id);
-	elem.style.display = "block";
+	if (elem) elem.style.display = "block";
 };
 
 const hide = (id) => {
 	const elem = document.querySelector(id);
-	elem.style.display = "none";
+	if (elem) elem.style.display = "none";
 };
 
 const el = (query) => document.querySelector(query);

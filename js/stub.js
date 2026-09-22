@@ -2,7 +2,7 @@
 // Dummy file to use while developing the UI. This way we can just develop it on a local fileserver, and don't have to reload
 // an extension for every tiny change!
 
-if (!chrome || !chrome.storage || !chrome.storage.local) {
+if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
 
      const testData = {
         "createdBy": "Redirector v3.2",
@@ -60,7 +60,13 @@ if (!chrome || !chrome.storage || !chrome.storage.local) {
         ]
     };
 
-    localStorage.redirector = JSON.stringify(testData);
+    try {
+        if (!localStorage.redirector) {
+            localStorage.redirector = JSON.stringify(testData);
+        }
+    } catch (_) {
+        // localStorage unavailable (e.g. file:// with strict security)
+    }
 
 
     // Make dummy for testing...
@@ -68,8 +74,12 @@ if (!chrome || !chrome.storage || !chrome.storage.local) {
     chrome.storage = {
         local: {
             get(defaults, callback) {
-                const data = JSON.parse(localStorage.redirector || "{}");
-                
+                let data;
+                try {
+                    data = JSON.parse(localStorage.redirector || "{}");
+                } catch (_) {
+                    data = {};
+                }
                 const result = {};
                 for (const key in defaults) {
                     if (typeof data[key] !== "undefined") {
@@ -81,13 +91,18 @@ if (!chrome || !chrome.storage || !chrome.storage.local) {
                 callback(result);
             },
 
-            set(obj) {
-                const data = JSON.parse(localStorage.redirector || "{}");
-                
+            set(obj, callback) {
+                let data;
+                try {
+                    data = JSON.parse(localStorage.redirector || "{}");
+                } catch (_) {
+                    data = {};
+                }
                 for (const k in obj) {
                     data[k] = obj[k];
                 }
                 localStorage.redirector = JSON.stringify(data);
+                if (callback) callback();
             }
         }
     };
@@ -96,12 +111,20 @@ if (!chrome || !chrome.storage || !chrome.storage.local) {
         sendMessage(params, callback) {
             if (params.type === "get-redirects") {
                 chrome.storage.local.get({ redirects: [] }, callback);
+            } else if (params.type === "save-redirects") {
+                chrome.storage.local.set({ redirects: params.redirects }, () => {
+                    if (callback) callback({ message: "Redirects saved" });
+                });
             } else if (params.type === "toggle-sync") {
                 if (params.isSyncEnabled) {
-                    callback({ message: "sync-enabled" });
-                } else {
+                    if (callback) callback({ message: "sync-enabled" });
+                } else if (callback) {
                     callback({ message: "sync-disabled" });
                 }
+            } else if (params.type === "get-sync-state") {
+                if (callback) callback({ isSyncEnabled: false });
+            } else if (params.type === "update-icon") {
+                if (callback) callback({});
             }
         },
         getManifest() {

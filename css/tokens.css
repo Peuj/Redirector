@@ -1,0 +1,115 @@
+
+/* ================================================================
+   Redirector — Design Tokens
+   Imported by redirector.css, help.css, and popup.css
+   ================================================================ */
+
+:root {
+  --font:       'Segoe UI', system-ui, -apple-system, arial, sans-serif;
+  --font-mono:  'Cascadia Code', 'Consolas', 'Courier New', monospace;
+
+  /* Surface & border */
+  --bg:         #f8f8f8;
+  --surface:    #fff;
+  --surface-2:  #f8f8f8;
+  --border:     #e5e5e5;
+
+  /* Text */
+  --text:       #3b3b3b;
+  --text-muted: #6f6f6f;
+  --text-faint: #9d9d9d;
+
+  /* Brand colors (text/accent usage) */
+  --blue:       #005fb8;
+  --blue-deep:  #0258a8;
+  --green:      #1c7e3e;
+  --green-deep: #156530;
+  --red:        #c83030;
+  --red-deep:   #a82525;
+  --grey-bg:    #e5e5e5;
+  --grey-hover: #cecece;
+
+  /* Button backgrounds — same as brand in light mode */
+  --blue-btn:        var(--blue);
+  --blue-btn-hover:  var(--blue-deep);
+  --green-btn:       var(--green);
+  --green-btn-hover: var(--green-deep);
+  --red-btn:         var(--red);
+  --red-btn-hover:   var(--red-deep);
+
+  /* Shape */
+  --r-xs:  3px;
+  --r-sm:  5px;
+  --r:     7px;
+  --r-lg:  10px;
+  --r-xl:  14px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow:    0 4px 12px rgb(0 0 0 / 0.09), 0 1px 3px rgb(0 0 0 / 0.05);
+  --shadow-xl: 0 16px 48px rgb(0 0 0 / 0.16), 0 4px 16px rgb(0 0 0 / 0.08);
+
+  /* Help page: inline code / pattern blocks */
+  --code-bg:     #eff6ff;
+  --code-border: #bfdbfe;
+  --code-text:   #1e3a5f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:         #181818;
+    --surface:    #1f1f1f;
+    --surface-2:  #2b2b2b;
+    --border:     #2b2b2b;
+    --text:       #ccc;
+    --text-muted: #9d9d9d;
+    --text-faint: #6b6b6b;
+    --blue:       #60a5fa;
+    --blue-deep:  #93c5fd;
+    --green:      #2ea043;
+    --green-deep: #4ab856;
+    --red:        #f85149;
+    --red-deep:   #ff7060;
+    --grey-bg:    #3c3c3c;
+    --grey-hover: #505050;
+
+    /* Button backgrounds in dark mode: dark enough for white text (WCAG AA) */
+    --blue-btn:        #0078d4;
+    --blue-btn-hover:  #026ec1;
+    --green-btn:       #1a7a4a;
+    --green-btn-hover: #155f39;
+    --red-btn:         #c43636;
+    --red-btn-hover:   #a02c2c;
+
+    /* Stronger elevation shadows on dark surfaces */
+    --shadow-xs: 0 1px 3px rgb(0 0 0 / 0.35);
+    --shadow-sm: 0 2px 6px rgb(0 0 0 / 0.40), 0 1px 3px rgb(0 0 0 / 0.30);
+    --shadow:    0 4px 14px rgb(0 0 0 / 0.50), 0 1px 4px rgb(0 0 0 / 0.30);
+    --shadow-xl: 0 16px 48px rgb(0 0 0 / 0.65), 0 4px 16px rgb(0 0 0 / 0.40);
+
+    /* Help page: inline code / pattern blocks */
+    --code-bg:     #0d1f12;
+    --code-border: #1e3a1e;
+    --code-text:   #2ea043;
+  }
+}
+
+/* Brand mark in h1 */
+h1:has(.brand-icon) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+h1 .brand-icon {
+  flex-shrink: 0;
+  letter-spacing: 0;
+}
+
+h1 .brand-icon img {
+  display: block;
+  width: 28px;
+  height: 28px;
+}

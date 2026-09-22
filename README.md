@@ -1,6 +1,8 @@
 ## Description
 Web browser extension (Firefox, Vivaldi, Chrome, Opera, Edge) to redirect URLs based on regex or wildcard patterns.
 
+**Note for Chrome, Edge, and Opera:** These browsers use Manifest V3's `declarativeNetRequest` API. Redirect rules that use Process Matches transforms (URL encode/decode, Base64, Replace) are not applied on Chromium-based browsers. Firefox uses the `webRequest` API and supports all features.
+
 ## Tribute
 In loving memory of Einar Egilsson, who gave us Redirector and selflessly nurtured it for many years.  We miss you Einar, and will always remember your kindness and generosity.
 

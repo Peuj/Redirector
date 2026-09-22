@@ -1,14 +1,18 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 	<head>
-		<title>REDIRECTOR HELP</title>
+		<title>Redirector — Help</title>
 		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<link rel="stylesheet" href="css/help.css" />
-		<link rel="shortcut icon" href="images/icon-light-theme-32.png">
+		<link rel="icon" href="images/icon-light-theme-32.png">
 	</head>
 	<body>
 		
-		<h1>REDIRECTOR HELP</h1>
+		<h1><picture class="brand-icon">
+			<source srcset="images/icon-dark-theme-32.png" media="(prefers-color-scheme: dark)">
+			<img src="images/icon-light-theme-32.png" alt="">
+		</picture>Redirector Help</h1>
 		<h3>Table of contents</h3>
 		<ul>
 			<li><a href="#whatisredirector">What is Redirector?</a></li>
@@ -37,6 +41,7 @@
 					<li><a href="#customvariables">Custom variables</a></li>
 				</ul>
 			</li>
+			<li><a href="#organizemode">Organizing rules</a></li>
 			<li><a href="#wildcards">Wildcards</a></li>
 			<li><a href="#regularexpressions">Regular expressions</a></li>
 			<li><a href="#storageArea">Storage Area (Sync vs Local)</a></li>
@@ -61,7 +66,7 @@
 		load <span class="url">http://def.com</span> instead. This can be useful for instance to always redirect articles to printer friendly
 		versions, redirect http:// to https:// for sites that support both, bypass advertising pages that appear before
 		being able to view certain pages and more.</p>
-		<p>A new feature in v3.0 is that the result of a redirect will never be redirected again, even if it matches another include pattern. This is to prevent endless loops, for example if you have a pattern that redirects from a -> b and another that redirects from b -> a. This also removes the annoying message that the include pattern matches the result and therefore you can't create the redirect. That doesn't matter anymore because the result will never be redirected, even if it matches the include pattern again, so this should make it simpler for people to create redirects.</p> 
+		<p>By default, a redirect target is never re-redirected, even if it matches another rule. This prevents endless loops, for example if rule A redirects to B and rule B redirects back to A. To override this for a specific rule, see <a href="#allowloops">Allow chained redirects</a>.</p> 
 		
 		<a name="basicusage"></a>
 		<h4>Basic usage</h4>
@@ -107,7 +112,7 @@
             		<li><a name="noprocessing"></a><strong>No Processing:</strong> This is the default. Just use the matches from the original url exactly as they are.</li>
 		            <li><a name="replacematches"></a><strong>Replace matches:</strong> Find and replace text within each captured match before inserting it into the redirect URL.
 		            Enter a <strong>Find</strong> string (plain text or, optionally, a wildcard/regex pattern) and a <strong>Replace with</strong> string.
-		            You can use JavaScript <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_a_parameter" target="_blank">replacement patterns</a> such as <span class="pattern">$&amp;</span> in the replacement.
+		            You can use JavaScript <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_a_parameter" target="_blank" rel="noopener noreferrer">replacement patterns</a> such as <span class="pattern">$&amp;</span> in the replacement.
 		            Check <strong>Replace all occurrences</strong> to replace every match instead of only the first.
 		            </li>
 		            <li><a name="urldecodematches"></a><strong>URL Decode matches:</strong> A common usage of Redirector is to catch urls like
@@ -130,12 +135,10 @@
 		            <li><a name="base64encodematches"></a><strong>Base64 Encode matches:</strong> The opposite of Base64 Decode. This option will encode the matched parameter using Base64 before using it in the target url.
 		            </li>
 		        </ul>
+		        <p><strong>Note for Chrome, Edge, and Opera users:</strong> These browsers use Manifest V3's <code>declarativeNetRequest</code> API, which executes redirect rules without running JavaScript. As a result, <em>Process Matches</em> transforms (URL encode/decode, Base64, Replace) are not applied on those browsers — only <strong>No Processing</strong> works reliably across all browsers. Firefox is unaffected.</p>
 		    </li>
 
-            <li><a name="applyto"></a><strong>Apply to:</strong> The Apply to option is new in version 3.0 of Redirector. For 99% of cases you won't need this, so don't worry about it.
-            	By default Redirector only redirects requests from the address bar of your browser, the page you're viewing. It doesn't redirect requests for scripts, iframes, images
-            	or anything else. Now in version 3.0 it is possible to opt into that however, and redirect any type of request. Just beware that this might have performance implications
-            	if you're redirecting all types of requests and you have many redirects.
+            <li><a name="applyto"></a><strong>Apply to:</strong> For most rules you will not need this. By default Redirector only redirects main window navigations (address bar). You can opt in to also redirect scripts, iframes, images, and other request types. Be aware that this may have performance implications if you have many rules.
         	</li>
 
             <li><a name="sourcepattern"></a><strong>Source pattern:</strong> An optional wildcard or regex pattern that must match the
@@ -157,6 +160,18 @@
             expand to <span class="pattern">https://proxy.example.com/$1</span>. Variables are resolved after capture group
             substitution. Unknown variable names are left as-is.</li>
 
+		</ul>
+
+		<a name="organizemode"></a>
+		<h4>Organizing rules</h4>
+
+		<p>Each rule row has a <strong>Select</strong> checkbox. Tick one or more rules to perform bulk operations:</p>
+		<ul>
+			<li>Use <strong>Select All</strong> in the toolbar to select every rule at once. Click it again to clear the selection.</li>
+			<li>With multiple rules selected, the <strong>▲ / ▼</strong> (move up/down) and <strong>⟰ / ⟱</strong> (jump to top/bottom) buttons on any selected row move the entire selection as a group.</li>
+			<li>Clicking <strong>Delete</strong> on any selected rule when multiple are checked deletes all selected rules at once after confirmation.</li>
+			<li>Clicking <strong>Disable</strong> or <strong>Enable</strong> on any selected rule toggles all selected rules together.</li>
+			<li>Clicking <strong>Export</strong> on any selected rule exports all selected rules as one JSON file.</li>
 		</ul>
 
 		<a name="wildcards"></a>
@@ -182,19 +197,19 @@
 		<h4>Regular expressions</h4>
 		
 		<p>Regular expressions allow for more complicated patterns but they are a lot harder to learn than wildcards. I'm not gonna
-		create a regex tutorial here but normal javascript regex syntax works, look at <a href="http://www.regular-expressions.info/" target="_blank">Regular-Expressions.info</a> for
+		create a regex tutorial here but normal javascript regex syntax works, look at <a href="https://www.regular-expressions.info/" target="_blank" rel="noopener noreferrer">Regular-Expressions.info</a> for
 		an introduction to regular expressions. $1,$2 etc. can be used in the redirect url and will be replaced with contents of captures in
 		the regular expressions. Captures are specified with parentheses. Example: <span class="pattern">http://example.com/index.asp\?id=(\d+)</span> will match the url
 		<span class="url">http://example.com/index.asp?id=12345</span> and $1 will be replaced by 12345. (A common mistake in regex patterns is to forget to escape
 		the ? sign in the querystring of the url. ? is a special character in regular expressions so if you want to match an url with a querystring
-		you should escape it as \?). To test your regular expressions, you may use any website or service. For example, <a href="https://regexr.com" target="_blank">RegExr</a>.</p>
+		you should escape it as \?). To test your regular expressions, you may use any website or service. For example, <a href="https://regexr.com" target="_blank" rel="noopener noreferrer">RegExr</a>.</p>
 		
 		<a name="storageArea"></a>
 		<h4>Storage Area (Sync vs Local)</h4>
 
 		<p>Storage Area, by default, is set to Local. If you wish to sync your redirector rules across devices, you may choose to enable Sync from Settings page.
 		When you toggle to Sync, data will be copied over to Sync storage and local storage will be deleted. 
-		Similary, sync storage will be deleted if you disable sync and data will be moved to Local storage.
+		Similarly, sync storage will be deleted if you disable sync and data will be moved to Local storage.
 		<div>	
 		<em>Note:</em><ol> <li>Google Chrome Sync and Mozilla Firefox Sync limits the storage size as per below. 
 		This limit is decided by browser vendors and Redirector addon cannot do anything about changing the below.</li>

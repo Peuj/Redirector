@@ -22,6 +22,7 @@ const isDarkMode = () => {
 	return window.matchMedia("(prefers-color-scheme: dark)").matches;
 };
 const isFirefox = Boolean(navigator.userAgent.match(/Firefox/i));
+const isOpera = Boolean(navigator.userAgent.match(/OPR\//i));
 
 let storageArea = chrome.storage.local;
 // Redirects partitioned by request type, so we have to run through
@@ -64,8 +65,8 @@ const setIcon = (image) => {
 const isRedirectLoop = (url) => {
 	const data = justRedirected[url];
 	const threshold = 3000;
-	if (!data || ((new Date().getTime() - data.timestamp) > threshold)) {
-		justRedirected[url] = { timestamp: new Date().getTime(), count: 1 };
+	if (!data || ((Date.now() - data.timestamp) > threshold)) {
+		justRedirected[url] = { timestamp: Date.now(), count: 1 };
 		return false;
 	}
 	data.count++;
@@ -96,7 +97,7 @@ const checkRedirects = (details) => {
 
 	const timestamp = ignoreNextRequest[details.url];
 	if (timestamp) {
-		log(`Ignoring ${details.url}, was just redirected ${new Date().getTime() - timestamp}ms ago`);
+		log(`Ignoring ${details.url}, was just redirected ${Date.now() - timestamp}ms ago`);
 		delete ignoreNextRequest[details.url];
 		return {};
 	}
@@ -118,7 +119,7 @@ const checkRedirects = (details) => {
 				sendNotifications(r, details.url, result.redirectTo);
 			}
 			if (!r.allowLoops) {
-				ignoreNextRequest[result.redirectTo] = new Date().getTime();
+				ignoreNextRequest[result.redirectTo] = Date.now();
 			}
 
 			return { redirectUrl: result.redirectTo };
@@ -135,7 +136,7 @@ const monitorChanges = (changes) => {
 	if (changes.disabled) {
 		updateIcon();
 
-		if (changes.disabled.newValue == true) {
+		if (changes.disabled.newValue === true) {
 			log("Disabling Redirector, removing listener");
 			chrome.webRequest.onBeforeRequest.removeListener(checkRedirects);
 			chrome.webNavigation.onHistoryStateUpdated.removeListener(checkHistoryStateRedirects);
@@ -180,7 +181,7 @@ const createFilter = (redirects) => {
 			// Firefox considers responsive web images request as imageset. Chrome doesn't.
 			// Chrome throws an error for imageset type, so let's add to 'types' only for the values that chrome or firefox supports
 			if (chrome.webRequest.ResourceType[type.toUpperCase()] !== undefined) {
-			if (types.indexOf(type) == -1) {
+			if (types.includes(type) === false) {
 				types.push(type);
 			}
 		}
@@ -227,33 +228,34 @@ const updateDNRRules = async (redirects) => {
 
 	const existing = await chrome.declarativeNetRequest.getDynamicRules();
 	const removeRuleIds = existing.map(r => r.id);
-	const newRules = [];
-	let id = 1;
 
+	const candidates = [];
 	for (const rObj of redirects) {
 		if (rObj.disabled) continue;
 		// declarativeNetRequest has no JS execution, so processMatches transforms cannot be applied
 		if (rObj.processMatches && rObj.processMatches !== "noProcessing") continue;
-
 		const r = new Redirect(rObj);
 		const regexFilter = r._preparePattern(r.includePattern);
 		if (!regexFilter) continue;
-
-
-		const supported = await chrome.declarativeNetRequest.isRegexSupported({
-			regex: regexFilter,
-			isCaseSensitive: false
-		});
-		if (!supported.isSupported) {
-			log(`DNR: skipping "${rObj.description}" (${supported.reason})`);
-			continue;
-		}
-
-		// DNR uses \1 \2 capture group syntax; Redirector uses $1 $2
-		const regexSubstitution = rObj.redirectUrl.replace(/\$(\d+)/g, "\\$1");
 		const resourceTypes = (rObj.appliesTo || ["main_frame"]).filter(t => DNR_RESOURCE_TYPES.has(t));
 		if (!resourceTypes.length) continue;
+		candidates.push({ rObj, regexFilter, resourceTypes });
+	}
 
+	const supportResults = await Promise.all(
+		candidates.map(c => chrome.declarativeNetRequest.isRegexSupported({ regex: c.regexFilter, isCaseSensitive: false }))
+	);
+
+	const newRules = [];
+	let id = 1;
+	for (let i = 0; i < candidates.length; i++) {
+		if (!supportResults[i].isSupported) {
+			log(`DNR: skipping "${candidates[i].rObj.description}" (${supportResults[i].reason})`);
+			continue;
+		}
+		const { rObj, regexFilter, resourceTypes } = candidates[i];
+		// DNR uses \1 \2 capture group syntax; Redirector uses $1 $2
+		const regexSubstitution = rObj.redirectUrl.replace(/\$(\d+)/g, "\\$1");
 		newRules.push({
 			id: id++,
 			priority: 1,
@@ -316,7 +318,8 @@ const setUpRedirectListener = () => {
 
 			const historyFilter = { url: [] };
 			for (const r of partitionedRedirects.history) {
-				historyFilter.url.push({ urlMatches: r._preparePattern(r.includePattern) });
+				const urlPattern = r._preparePattern(r.includePattern);
+				if (urlPattern) historyFilter.url.push({ urlMatches: urlPattern });
 			}
 			chrome.webNavigation.onHistoryStateUpdated.addListener(checkHistoryStateRedirects, historyFilter);
 		}
@@ -378,21 +381,20 @@ chrome.runtime.onMessage.addListener(
 			});
 		} else if (request.type == "save-redirects") {
 			console.log(`Saving redirects, count=${request.redirects.length}`);
-			delete request.type;
-			storageArea.set(request, () => {
+			storageArea.set({ redirects: request.redirects }, () => {
 				if (chrome.runtime.lastError) {
-				 if (chrome.runtime.lastError.message.indexOf("QUOTA_BYTES_PER_ITEM quota exceeded") > -1) {
-					log("Redirects failed to save as size of redirects larger than allowed limit per item by Sync");
-					sendResponse({
-						message: "Redirects failed to save as size of redirects larger than what's allowed by Sync. Refer Help Page"
-					});
-				 }
+					if (chrome.runtime.lastError.message.includes("QUOTA_BYTES_PER_ITEM quota exceeded")) {
+						log("Redirects failed to save as size of redirects larger than allowed limit per item by Sync");
+						sendResponse({
+							message: "Redirects failed to save as size of redirects larger than what's allowed by Sync. Refer Help Page"
+						});
+					} else {
+						sendResponse({ message: `Redirects failed to save: ${chrome.runtime.lastError.message}` });
+					}
 				} else {
-				log("Finished saving redirects to storage");
-				sendResponse({
-					message: "Redirects saved"
-				});
-			}
+					log("Finished saving redirects to storage");
+					sendResponse({ message: "Redirects saved" });
+				}
 			});
 		} else if (request.type == "update-icon") {
 			updateIcon();
@@ -404,7 +406,6 @@ chrome.runtime.onMessage.addListener(
 		} else if (request.type == "toggle-sync") {
 			// Notes on Toggle Sync feature here https://github.com/einaregilsson/Redirector/issues/86#issuecomment-389943854
 			// This provides for feature request - issue 86
-			delete request.type;
 			log(`toggling sync to ${request.isSyncEnabled}`);
 			// Setting for Sync enabled or not, resides in Local.
 			chrome.storage.local.set({
@@ -431,14 +432,15 @@ chrome.runtime.onMessage.addListener(
 										// check if at least one rule is there.
 										if (obj.redirects.length > 0) {
 											chrome.storage.sync.set(obj, () => {
+												if (chrome.runtime.lastError) {
+													storageArea = chrome.storage.local;
+													sendResponse({ message: `Redirects failed to save to Sync: ${chrome.runtime.lastError.message}` });
+													return;
+												}
 												log("redirects moved from Local to Sync Storage Area");
-												// Remove Redirects from Local storage
 												chrome.storage.local.remove("redirects");
-												// Call setupRedirectListener to setup the redirects
 												setUpRedirectListener();
-												sendResponse({
-													message: "sync-enabled"
-												});
+												sendResponse({ message: "sync-enabled" });
 											});
 										} else {
 											log("No redirects are setup currently in Local, just enabling Sync");
@@ -457,14 +459,14 @@ chrome.runtime.onMessage.addListener(
 						}, (obj) => {
 							if (obj.redirects.length > 0) {
 								chrome.storage.local.set(obj, () => {
+									if (chrome.runtime.lastError) {
+										sendResponse({ message: `Redirects failed to save to local storage: ${chrome.runtime.lastError.message}` });
+										return;
+									}
 									log("redirects moved from Sync to Local Storage Area");
-									// Remove Redirects from sync storage
 									chrome.storage.sync.remove("redirects");
-									// Call setupRedirectListener to setup the redirects
 									setUpRedirectListener();
-									sendResponse({
-										message: "sync-disabled"
-									});
+									sendResponse({ message: "sync-disabled" });
 								});
 							} else {
 								sendResponse({
@@ -548,7 +550,7 @@ const sendNotifications = (redirect, originalUrl, redirectedUrl) => {
 
 	const icon = isDarkMode() ? "images/icon-dark-theme-48.png" : "images/icon-light-theme-48.png";
 
-	if (navigator.userAgent.toLowerCase().indexOf("chrome") > -1 && navigator.userAgent.toLowerCase().indexOf("opr") < 0) {
+	if (navigator.userAgent.toLowerCase().includes("chrome") && !isOpera) {
 
 		const items = [{ title: "Original page: ", message: originalUrl }, { title: "Redirected to: ", message: redirectedUrl }];
 		const head = `Redirector - Applied rule : ${redirect.description}`;
@@ -583,7 +585,7 @@ const handleStartup = () => {
 	// window.matchMedia is not available in Chrome MV3 service workers
 	if (typeof window !== "undefined") {
 		const darkModeMql = window.matchMedia("(prefers-color-scheme: dark)");
-		darkModeMql.onchange = updateIcon;
+		darkModeMql.addEventListener("change", updateIcon);
 	}
 };
 
@@ -606,7 +608,7 @@ chrome.runtime.onInstalled.addListener(() => {
 const getRedirectForUrl = (url) => {
 	const list = partitionedRedirects.main_frame || [];
 	for (const r of list) {
-		const result = r.getMatch(url);
+		const result = r.getMatch(url, false, "");
 		if (result.isMatch) return result.redirectTo;
 	}
 	return null;
@@ -638,3 +640,14 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 		log(`Copy with Redirect: ${err.message}`);
 	});
 });
+
+// Periodically evict stale entries from the anti-loop caches.
+setInterval(() => {
+	const now = Date.now();
+	for (const url of Object.keys(ignoreNextRequest)) {
+		if (now - ignoreNextRequest[url] > 30000) delete ignoreNextRequest[url];
+	}
+	for (const url of Object.keys(justRedirected)) {
+		if (now - justRedirected[url].timestamp > 3000) delete justRedirected[url];
+	}
+}, 30000);

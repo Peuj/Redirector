@@ -1,106 +1,132 @@
+
+/* ================================================================
+   Redirector Help
+   ================================================================ */
+
+@import url("tokens.css");
+
+/* ================================================================
+   Base
+   ================================================================ */
+
+html {
+  background: var(--bg);
+}
+
 body {
-	font-family:Arial, sans-serif;
-	font-size:16px;
-	line-height: 20px;
-	max-width:740px;
-	margin:20px auto;
-	border:solid 1px #bbb;
-	padding:50px;
-	background: white;
-	border-radius: 4px;
-	color: #2b2626;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 740px;
+  margin: 24px auto;
+  border: 1px solid var(--border);
+  padding: 48px;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  color: var(--text);
+  box-sizing: border-box;
 }
 
 a, a:visited {
-	color:rgb(21,90,233);
-	text-decoration: none;
+  color: var(--blue);
+  text-decoration: none;
 }
 
 a:hover {
-	color:black;
-	text-decoration: underline;
-}
-
-html {
-	background: #f8f8f8;
+  text-decoration: underline;
 }
 
 h1 {
-	text-align: center;
-	font-size:38px;
-	margin-bottom:80px;
+  text-align: center;
+  font-size: 26px;
+  letter-spacing: 4px;
+  font-weight: 700;
+  color: var(--blue);
+  margin-bottom: 48px;
 }
 
 h4 {
-	font-size:24px;
-	margin-bottom:0;
-	padding-bottom:0;
+  font-size: 17px;
+  font-weight: 600;
+  margin: 32px 0 6px;
+  padding-bottom: 0;
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
 }
 
 li {
-	margin:2px;
+  margin: 2px 0;
 }
 
 .fields li {
-	margin:10px 4px;
+  margin: 10px 4px;
 }
 
 .url {
-	font-style: italic;
+  font-style: italic;
+  color: var(--text-muted);
 }
 
 td.pattern {
-	font-weight: normal;
-	background:transparent;
+  font-weight: normal;
+  background: transparent;
 }
 
 th {
-	text-align:right;
+  text-align: right;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  padding-right: 8px;
 }
 
 table {
-	margin:10px;
-	border:solid 1px #bbb;
-	padding:8px;
-	margin-bottom:30px;
-	border-radius: 3px;
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  margin-bottom: 24px;
+  border-radius: var(--r);
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+td, th {
+  padding: 5px 8px;
 }
 
 .pattern {
-	color:black;
-	font-weight: bold;
-	display: inline-block;
-	padding-left:2px;
-	padding-right:2px;
-	border-radius:3px;
-	background: #eee;
+  color: var(--code-text);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: var(--r-xs);
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
 }
 
-/* Dark mode support */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--r-xs);
+  padding: 1px 5px;
+  color: var(--code-text);
+}
 
 @media (prefers-color-scheme: dark) {
-
-	html {
-		background: rgb(32,33,36);
-	}
-	body {
-	  background: rgb(42,43,46);
-	  color: #ddd;
-	  border: solid 1px #888;
-	}
-	th {
-		color: white;
-		font-weight: normal;
-	}
-	a, a:visited, a:hover {
-		color: rgb(138,179,241);
-	}
-
-	h1, h2, h3, h4, strong {
-		color: white;
-	}
-
-	tr .pattern {
-		color: rgb(53,180,75);
-	}
+  h2, h3, h4, strong {
+    color: var(--text);
   }
+
+  td.pattern {
+    color: var(--green);
+  }
+}

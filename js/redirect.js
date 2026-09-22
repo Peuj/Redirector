@@ -3,12 +3,6 @@ function Redirect(o) {
 	this._init(o);
 }
 
-/* global exports */
-// temp, allow addon sdk to require this.
-if (typeof exports !== "undefined") {
-	exports.Redirect = Redirect;
-}
-
 // Static
 Redirect.WILDCARD = "W";
 Redirect.REGEX = "R";
@@ -70,10 +64,10 @@ Redirect.prototype = {
 		const excPattern = this._preparePattern(this.excludePattern);
 
 		if (incPattern) {
-			this._rxInclude = new RegExp(incPattern, "gi");
+			this._rxInclude = new RegExp(incPattern, "i");
 		}
 		if (excPattern) {
-			this._rxExclude = new RegExp(excPattern, "gi");
+			this._rxExclude = new RegExp(excPattern, "i");
 		}
 		if (this.processMatches === "replace" && this.usePatternForReplace && this.replacePattern) {
 			const replPattern = this._preparePattern(this.replacePattern);
@@ -84,27 +78,28 @@ Redirect.prototype = {
 		if (this.sourcePattern) {
 			const srcPattern = this._preparePattern(this.sourcePattern);
 			if (srcPattern) {
-				this._rxSource = new RegExp(srcPattern, "gi");
+				this._rxSource = new RegExp(srcPattern, "i");
 			}
 		}
 	},
 
 	equals(redirect) {
-		return this.description == redirect.description &&
-			this.exampleUrl == redirect.exampleUrl &&
-			this.includePattern == redirect.includePattern &&
-			this.excludePattern == redirect.excludePattern &&
-			this.patternDesc == redirect.patternDesc &&
-			this.redirectUrl == redirect.redirectUrl &&
-			this.patternType == redirect.patternType &&
-			this.processMatches == redirect.processMatches &&
-			this.replaceFrom == redirect.replaceFrom &&
-			this.replacement == redirect.replacement &&
-			this.replaceAll == redirect.replaceAll &&
-			this.usePatternForReplace == redirect.usePatternForReplace &&
-			this.allowLoops == redirect.allowLoops &&
-			this.sourcePattern == redirect.sourcePattern &&
-			this.appliesTo.toString() == redirect.appliesTo.toString();
+		return this.description === redirect.description &&
+			this.exampleUrl === redirect.exampleUrl &&
+			this.includePattern === redirect.includePattern &&
+			this.excludePattern === redirect.excludePattern &&
+			this.patternDesc === redirect.patternDesc &&
+			this.redirectUrl === redirect.redirectUrl &&
+			this.patternType === redirect.patternType &&
+			this.processMatches === redirect.processMatches &&
+			this.replaceFrom === redirect.replaceFrom &&
+			this.replacement === redirect.replacement &&
+			this.replaceAll === redirect.replaceAll &&
+			this.usePatternForReplace === redirect.usePatternForReplace &&
+			this.allowLoops === redirect.allowLoops &&
+			this.sourcePattern === redirect.sourcePattern &&
+			this.appliesTo.length === redirect.appliesTo.length &&
+			this.appliesTo.every(t => redirect.appliesTo.includes(t));
 	},
 
 	toObject() {
@@ -175,37 +170,37 @@ Redirect.prototype = {
 			return;
 		}
 
-		if (this.patternType == Redirect.REGEX && this.includePattern) {
+		if (this.patternType === Redirect.REGEX && this.includePattern) {
 			try {
 				// eslint-disable-next-line no-new
-				new RegExp(this.includePattern, "gi");
+				new RegExp(this.includePattern, "i");
 			} catch (e) {
 				this.error = "Invalid regular expression in Include pattern.";
 				return;
 			}
 		}
 
-		if (this.patternType == Redirect.REGEX && this.excludePattern) {
+		if (this.patternType === Redirect.REGEX && this.excludePattern) {
 			try {
 				// eslint-disable-next-line no-new
-				new RegExp(this.excludePattern, "gi");
+				new RegExp(this.excludePattern, "i");
 			} catch (e) {
 				this.error = "Invalid regular expression in Exclude pattern.";
 				return;
 			}
 		}
 
-		if (this.processMatches === "replace" && this.patternType == Redirect.REGEX && this.usePatternForReplace && this.replacePattern) {
+		if (this.processMatches === "replace" && this.patternType === Redirect.REGEX && this.usePatternForReplace && this.replacePattern) {
 			try {
 				// eslint-disable-next-line no-new
-				new RegExp(this.replacePattern, "gi");
+				new RegExp(this.replacePattern, "i");
 			} catch (e) {
 				this.error = "Invalid regular expression in Replace pattern.";
 				return;
 			}
 		}
 
-		if (!this.appliesTo || this.appliesTo.length == 0) {
+		if (!this.appliesTo || this.appliesTo.length === 0) {
 			this.error = "At least one request type must be chosen.";
 			return;
 		}
@@ -219,13 +214,7 @@ Redirect.prototype = {
 			return;
 		}
 
-		// Commented out because this code prevents saving many types of valid redirects.
-		// if (match.isMatch && !match.redirectTo.match(/^https?\:\/\//)) {
-		//	this.error = 'The redirect result must start with http:// or https://, current result is: "' + match.redirectTo;
-		//	return;
-		// }
-
-    if (!match.isMatch) {
+		if (!match.isMatch) {
 			this.error = "The include pattern does not match the example url.";
 			return;
 		}
@@ -234,11 +223,11 @@ Redirect.prototype = {
 	},
 
 	isRegex() {
-		return this.patternType == Redirect.REGEX;
+		return this.patternType === Redirect.REGEX;
 	},
 
 	isWildcard() {
-		return this.patternType == Redirect.WILDCARD;
+		return this.patternType === Redirect.WILDCARD;
 	},
 
 	test() {
@@ -255,15 +244,15 @@ Redirect.prototype = {
 		if (!pattern) {
 			return null;
 		}
-		if (this.patternType == Redirect.REGEX) {
+		if (this.patternType === Redirect.REGEX) {
 			return pattern;
 		} // Convert wildcard to regex pattern
 			let converted = "^";
 			for (let i = 0; i < pattern.length; i++) {
 				const ch = pattern.charAt(i);
-				if ("()[]{}?.^$\\+".indexOf(ch) != -1) {
+				if ("()[]{}?.^$\\+|".indexOf(ch) !== -1) {
 					converted += `\\${ch}`;
-				} else if (ch == "*") {
+				} else if (ch === "*") {
 					converted += "(.*?)";
 				} else {
 					converted += ch;
@@ -271,7 +260,7 @@ Redirect.prototype = {
 			}
 			converted += "$";
 			return converted;
-		
+
 	},
 
 	_init(o = {}) {
@@ -284,16 +273,10 @@ Redirect.prototype = {
 		this.redirectUrl = o.redirectUrl || "";
 		this.patternType = o.patternType || Redirect.WILDCARD;
 
-		this.patternTypeText = this.patternType == "W" ? "Wildcard" : "Regular Expression";
+		this.patternTypeText = this.patternType === "W" ? "Wildcard" : "Regular Expression";
 
 		this.patternDesc = o.patternDesc || "";
 		this.processMatches = o.processMatches || "noProcessing";
-		if (!o.processMatches && o.unescapeMatches) {
-			this.processMatches = "urlDecode";
-		}
-		if (!o.processMatches && o.escapeMatches) {
-			this.processMatches = "urlEncode";
-		}
 		this.replaceFrom = o.replaceFrom || "";
 		this.replacePattern = o.replacePattern || o.replaceFrom || "";
 		this.replacement = o.replacement || "";
@@ -322,8 +305,7 @@ Redirect.prototype = {
 			urlDecode: "E.g. turn %2Fbar%2Ffoo%3Fx%3D2 into /bar/foo?x=2",
 			doubleUrlDecode: "E.g. turn %252Fbar%252Ffoo%253Fx%253D2 into /bar/foo?x=2",
 			base64Encode: "E.g. turn http://cnn.com into aHR0cDovL2Nubi5jb20=",
-			base64Decode: "E.g. turn aHR0cDovL2Nubi5jb20= into http://cnn.com",
-			base64decode: "E.g. turn aHR0cDovL2Nubi5jb20= into http://cnn.com"
+			base64Decode: "E.g. turn aHR0cDovL2Nubi5jb20= into http://cnn.com"
 		};
 
 		return examples[this.processMatches];
@@ -341,7 +323,7 @@ Redirect.prototype = {
 		if (!matches) {
 			return null;
 		}
-		let resultUrl = this.redirectUrl.replace(/\$(\d+)/g, (_, n) => {
+		let resultUrl = this.redirectUrl.replace(/\$(\d+)/g, (match, n) => {
 			const idx = parseInt(n, 10);
 			let repl = matches[idx] || "";
 			if (this.processMatches === "replace") {
@@ -352,41 +334,53 @@ Redirect.prototype = {
 						: repl.replace(pattern, this.replacement);
 				}
 			} else if (this.processMatches === "urlDecode") {
-				repl = unescape(repl);
+				try {
+					repl = decodeURIComponent(repl);
+				} catch (_) {
+					// malformed percent-encoding; leave repl unchanged
+				}
 			} else if (this.processMatches === "doubleUrlDecode") {
-				repl = unescape(unescape(repl));
+				try {
+					repl = decodeURIComponent(repl);
+				} catch (_) {
+					// malformed percent-encoding; leave repl unchanged
+				}
+				try {
+					repl = decodeURIComponent(repl);
+				} catch (_) {
+					// malformed percent-encoding; leave repl unchanged
+				}
 			} else if (this.processMatches === "urlEncode") {
 				repl = encodeURIComponent(repl);
 			} else if (this.processMatches === "base64Encode") {
-				repl = btoa(repl);
+				repl = btoa(Array.from(new TextEncoder().encode(repl), b => String.fromCharCode(b)).join(""));
 			} else if (this.processMatches === "base64Decode" || this.processMatches === "base64decode") {
-				if (repl.indexOf("%") > -1) {
-					repl = unescape(repl);
+				if (repl.includes("%")) {
+					try {
+						repl = decodeURIComponent(repl);
+					} catch (_) {
+						// malformed percent-encoding; leave repl unchanged
+					}
 				}
 				repl = atob(repl);
 			}
 			return repl;
 		});
 		for (const [name, value] of Object.entries(Redirect.customVariables)) {
-			resultUrl = resultUrl.replaceAll(`[${name}]`, value);
+			resultUrl = resultUrl.replaceAll(`[${name}]`, value.replace(/\$/g, "$$$$"));
 		}
-		this._rxInclude.lastIndex = 0;
 		return resultUrl;
 	},
 
 	_sourceMatch(sourceUrl) {
 		if (!sourceUrl) return false;
-		const result = this._rxSource.test(sourceUrl);
-		this._rxSource.lastIndex = 0;
-		return result;
+		return this._rxSource.test(sourceUrl);
 	},
 
 	_excludeMatch(url) {
 		if (!this._rxExclude) {
 			return false;
 		}
-		const shouldExclude = this._rxExclude.test(url);
-		this._rxExclude.lastIndex = 0;
-		return shouldExclude;
+		return this._rxExclude.test(url);
 	}
 };

@@ -36,11 +36,11 @@ const importRedirects = (ev) => {
 		try {
 			data = JSON.parse(reader.result);
 		} catch (e) {
-			showMessage(`Failed to parse JSON data, invalid JSON: ${(e.message || "").substr(0, 100)}`);
+			showMessage(`Failed to parse JSON data, invalid JSON: ${(e.message || "").slice(0, 100)}`);
 			return;
 		}
 
-		if (!data.redirects) {
+		if (!Array.isArray(data.redirects)) {
 			showMessage("Invalid JSON, missing \"redirects\" property");
 			return;
 		}
@@ -62,7 +62,7 @@ const importRedirects = (ev) => {
 			if (REDIRECTS.some(item => new Redirect(item).equals(r))) {
 				existing++;
 			} else {
-				REDIRECTS.push(r.toObject());
+				REDIRECTS.push(r);
 				imported++;
 			}
 		}
@@ -97,12 +97,17 @@ const updateExportLink = () => {
 	el("#export-link").href = `data:text/plain;charset=utf-8,${encodeURIComponent(json)}`;
 };
 
-updateExportLink();
-
 const exportSingleRedirect = (index) => {
-	const redirect = REDIRECTS[index];
-	if (!redirect) {
-		showMessage("Redirect not found");
+	const isBulk = checkedIndices.size > 1 && checkedIndices.has(index);
+	const indices = isBulk ? [...checkedIndices].sort((a, b) => a - b) : [index];
+
+	const redirectObjects = indices.
+		map(i => REDIRECTS[i]).
+		filter(Boolean).
+		map(r => new Redirect(r).toObject());
+
+	if (redirectObjects.length === 0) {
+		showMessage("No redirects found to export");
 		return;
 	}
 
@@ -110,10 +115,14 @@ const exportSingleRedirect = (index) => {
 	const exportObj = {
 		createdBy: `Redirector v${version}`,
 		createdAt: new Date(),
-		redirects: [new Redirect(redirect).toObject()]
+		redirects: redirectObjects
 	};
 	const json = JSON.stringify(exportObj, null, 4);
-	const filename = `${(redirect.description || "My").replace(/[^a-zA-Z0-9]/g, "-").substring(0, 50)} redirector.json`;
+
+	const label = isBulk
+		? `${redirectObjects.length}-redirects`
+		: (REDIRECTS[index]?.description || "My").replace(/[^a-zA-Z0-9]/g, "-").substring(0, 50);
+	const filename = `${label} redirector.json`;
 
 	const link = document.createElement("a");
 	link.href = `data:text/plain;charset=utf-8,${encodeURIComponent(json)}`;
@@ -122,7 +131,10 @@ const exportSingleRedirect = (index) => {
 	link.click();
 	document.body.removeChild(link);
 
-	showMessage(`Successfully exported: ${redirect.description || "Unnamed redirect"}`, true);
+	const msg = isBulk
+		? `Successfully exported ${redirectObjects.length} rules`
+		: `Successfully exported: ${REDIRECTS[index]?.description || "Unnamed redirect"}`;
+	showMessage(msg, true);
 };
 
 const setupImportExportEventListeners = () => {
