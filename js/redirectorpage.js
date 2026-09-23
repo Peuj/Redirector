@@ -8,19 +8,24 @@ let selectedIndex = null;
 let priorSelectedIndex = null; // selectedIndex snapshot before each .redirect-rows action
 const checkedIndices = new Set();
 
+// Tracks how many of our own saves are pending storage notification, to avoid
+// treating our own storage writes as external changes in the concurrent-tab listener.
+let ownSavePending = 0;
+
 const normalize = (r) => new Redirect(r).toObject();
 
 const saveChanges = () => {
 	const arr = REDIRECTS.map(normalize);
+	ownSavePending++;
 	chrome.runtime.sendMessage({ type: "save-redirects", redirects: arr }, (response) => {
 		if (chrome.runtime.lastError || !response) {
-			console.error("Save failed:", chrome.runtime.lastError?.message ?? "no response from background");
+			ownSavePending = Math.max(0, ownSavePending - 1);
+			showMessage("Error: changes could not be saved. The extension background page is not responding.", false);
 			return;
 		}
 		if (response.message.includes("Redirects failed to save")) {
+			ownSavePending = Math.max(0, ownSavePending - 1);
 			showMessage(response.message, false);
-		} else {
-			console.log(`Saved ${arr.length} redirects at ${new Date()}. Message from background page:${response.message}`);
 		}
 	});
 };
@@ -28,6 +33,12 @@ const saveChanges = () => {
 const toggleSyncSetting = () => {
 	const isChecked = el("#storage-sync-option input").checked;
 	chrome.runtime.sendMessage({ type: "toggle-sync", isSyncEnabled: isChecked }, (response) => {
+		if (chrome.runtime.lastError || !response) {
+			options.isSyncEnabled = false;
+			el("#storage-sync-option input").checked = false;
+			showMessage("Error: could not reach background page to change sync settings.", false);
+			return;
+		}
 		if (response.message === "sync-enabled") {
 			options.isSyncEnabled = true;
 			showMessage("Sync is enabled!", true);
@@ -135,20 +146,7 @@ const handleCheckboxClick = (input) => {
 	}
 	updateActionStates();
 	updateSelectAllButton();
-};
-
-const clearGrouping = (elm) => {
-	const index = parseInt(elm.getAttribute("data-index"), 10);
-	elm.classList.remove("grouped");
-	elm.classList.remove("checked");
-	const checkMarkElm = elm.querySelector("label > .groupings");
-	const toggleBoxElm = elm.querySelector("input[type='checkbox']");
-	if (checkMarkElm) checkMarkElm.classList.remove("checkMarked");
-	if (toggleBoxElm) toggleBoxElm.checked = false;
-	if (!isNaN(index)) {
-		checkedIndices.delete(index);
-		if (REDIRECTS[index]) REDIRECTS[index].grouped = false;
-	}
+	updateExportButtonLabel();
 };
 
 const restoreSelectionState = () => {
@@ -175,8 +173,30 @@ const restoreSelectionState = () => {
 	}
 };
 
+const setRowMoveState = (row, canUp, canDown) => {
+	for (const btn of row.querySelectorAll("[data-action='moveUp'], [data-action='moveUpTop']")) {
+		if (canUp) {
+			btn.removeAttribute("disabled");
+			btn.classList.remove("disabled");
+		} else {
+			btn.setAttribute("disabled", "disabled");
+			btn.classList.add("disabled");
+		}
+	}
+	for (const btn of row.querySelectorAll("[data-action='moveDown'], [data-action='moveDownBottom']")) {
+		if (canDown) {
+			btn.removeAttribute("disabled");
+			btn.classList.remove("disabled");
+		} else {
+			btn.setAttribute("disabled", "disabled");
+			btn.classList.add("disabled");
+		}
+	}
+};
+
 const updateActionStates = () => {
 	const multiChecked = checkedIndices.size > 1;
+
 	for (const btn of document.querySelectorAll("[data-action='editRedirect'], [data-action='duplicateRedirect']")) {
 		if (multiChecked) {
 			btn.setAttribute("disabled", "disabled");
@@ -184,6 +204,28 @@ const updateActionStates = () => {
 		} else {
 			btn.removeAttribute("disabled");
 			btn.classList.remove("disabled");
+		}
+	}
+
+	// Per-row boundary reset — always correct for single/no selection.
+	for (const row of document.querySelectorAll(".redirect-row")) {
+		const idx = parseInt(row.getAttribute("data-index"), 10);
+		if (isNaN(idx)) continue;
+		setRowMoveState(row, idx !== 0, idx !== REDIRECTS.length - 1);
+	}
+
+	// Multi-select: override checked rows with group boundary state.
+	// Unchecked rows keep the per-row boundary state set above.
+	if (multiChecked) {
+		const grouping = checkIfGroupingExists();
+		if (grouping.length > 1) {
+			const groupCantMoveUp = grouping[0].index === 0;
+			const groupCantMoveDown = grouping[grouping.length - 1].index === REDIRECTS.length - 1;
+			for (const row of document.querySelectorAll(".redirect-row")) {
+				const idx = parseInt(row.getAttribute("data-index"), 10);
+				if (isNaN(idx) || !checkedIndices.has(idx)) continue;
+				setRowMoveState(row, !groupCantMoveUp, !groupCantMoveDown);
+			}
 		}
 	}
 };
@@ -195,11 +237,24 @@ const updateSelectAllButton = () => {
 	btn.textContent = allChecked ? "Clear Selection" : "Select All";
 };
 
+const updateExportButtonLabel = () => {
+	const link = el("#export-link");
+	if (!link) return;
+	if (checkedIndices.size > 0) {
+		link.textContent = "Export Selected";
+		link.setAttribute("download", `${checkedIndices.size}-selected-redirector.json`);
+	} else {
+		link.textContent = "Export All";
+		link.setAttribute("download", "Redirector.json");
+	}
+};
+
 
 const refreshUIState = () => {
 	restoreSelectionState();
 	updateActionStates();
 	updateSelectAllButton();
+	updateExportButtonLabel();
 };
 
 // ── Data operations ───────────────────────────────────────────────────────────
@@ -239,13 +294,6 @@ const checkIfGroupingExists = () => {
 		filter(item => item.row);
 };
 
-const isGroupAdjacent = (grouping) => {
-	for (let i = 1; i < grouping.length; i++) {
-		if (grouping[i].index - grouping[i - 1].index !== 1) return false;
-	}
-	return true;
-};
-
 // Sync REDIRECTS[i].grouped with checkedIndices after any move
 const syncGroupedProps = () => {
 	for (let i = 0; i < REDIRECTS.length; i++) {
@@ -255,9 +303,11 @@ const syncGroupedProps = () => {
 
 const toggleDisabled = (index) => {
 	if (checkedIndices.size > 1 && checkedIndices.has(index)) {
-		const anyEnabled = [...checkedIndices].some(i => REDIRECTS[i] && !REDIRECTS[i].disabled);
+		// Use the clicked rule's state to determine the action for the whole group,
+		// so the button label ("Enable"/"Disable") always matches what actually happens.
+		const targetDisabled = REDIRECTS[index] ? !REDIRECTS[index].disabled : false;
 		for (const i of checkedIndices) {
-			if (REDIRECTS[i]) REDIRECTS[i].disabled = anyEnabled;
+			if (REDIRECTS[i]) REDIRECTS[i].disabled = targetDisabled;
 		}
 	} else if (REDIRECTS[index]) REDIRECTS[index].disabled = !REDIRECTS[index].disabled;
 	updateBindings();
@@ -267,8 +317,8 @@ const toggleDisabled = (index) => {
 const moveUp = (index) => {
 	const grouping = checkIfGroupingExists();
 
-	if (grouping.length > 1) {
-		const jumpLength = isGroupAdjacent(grouping) ? grouping.length : 1;
+	if (grouping.length > 1 && checkedIndices.has(index)) {
+		const jumpLength = 1;
 		if (grouping[0].index - jumpLength < 0) return;
 
 		const oldGroupIndices = new Set(grouping.map(g => g.index));
@@ -321,8 +371,8 @@ const moveUp = (index) => {
 const moveDown = (index) => {
 	const grouping = checkIfGroupingExists();
 
-	if (grouping.length > 1) {
-		const jumpLength = isGroupAdjacent(grouping) ? grouping.length : 1;
+	if (grouping.length > 1 && checkedIndices.has(index)) {
+		const jumpLength = 1;
 		if (grouping[grouping.length - 1].index + jumpLength >= REDIRECTS.length) return;
 
 		const oldGroupIndices = new Set(grouping.map(g => g.index));
@@ -372,8 +422,10 @@ const moveDown = (index) => {
 };
 
 const moveUpTop = (index) => {
-	if (checkedIndices.size > 1) {
+	if (checkedIndices.size > 1 && checkedIndices.has(index)) {
 		const grouping = checkIfGroupingExists();
+		const sortedIdx = grouping.map(g => g.index).sort((a, b) => a - b);
+		if (sortedIdx.every((idx, i) => idx === i)) return; // already at top
 		const groupItems = grouping.map(g => REDIRECTS[g.index]);
 		const others = REDIRECTS.filter((_, i) => !checkedIndices.has(i));
 		REDIRECTS.splice(0, REDIRECTS.length, ...groupItems, ...others);
@@ -405,8 +457,11 @@ const moveUpTop = (index) => {
 };
 
 const moveDownBottom = (index) => {
-	if (checkedIndices.size > 1) {
+	if (checkedIndices.size > 1 && checkedIndices.has(index)) {
 		const grouping = checkIfGroupingExists();
+		const sortedIdx = grouping.map(g => g.index).sort((a, b) => a - b);
+		const lastBase = REDIRECTS.length - grouping.length;
+		if (sortedIdx.every((idx, i) => idx === lastBase + i)) return; // already at bottom
 		const groupItems = grouping.map(g => REDIRECTS[g.index]);
 		const others = REDIRECTS.filter((_, i) => !checkedIndices.has(i));
 		REDIRECTS.splice(0, REDIRECTS.length, ...others, ...groupItems);
@@ -457,11 +512,11 @@ const selectAll = () => {
 	restoreSelectionState();
 	updateActionStates();
 	updateSelectAllButton();
+	updateExportButtonLabel();
 };
 
 const confirmDeleteAll = () => {
 	const toDelete = [...checkedIndices].sort((a, b) => b - a);
-	const count = toDelete.length;
 
 	for (const i of toDelete) {
 		const node = el(`.redirect-row[data-index="${i}"]`);
@@ -486,7 +541,6 @@ const confirmDeleteAll = () => {
 	updateBindings();
 	saveChanges();
 	hideForm("#delete-all-form");
-	showMessage(`${count} rule${count !== 1 ? "s" : ""} deleted.`, true);
 };
 
 const cancelDeleteAll = () => {
@@ -571,9 +625,14 @@ const validateDuplicateKeys = () => {
 	for (const input of document.querySelectorAll(".var-key")) {
 		input.classList.toggle("duplicate", dupes.has(input.value.trim()));
 	}
+	return dupes.size > 0;
 };
 
 const saveVariablesNow = () => {
+	if (validateDuplicateKeys()) {
+		showMessage("Fix duplicate variable names before saving.", false);
+		return;
+	}
 	const vars = {};
 	for (const row of document.querySelectorAll(".variable-row")) {
 		const key = row.querySelector(".var-key").value.trim();
@@ -692,6 +751,7 @@ const pageLoad = () => {
 
 		const action = ev.target.getAttribute("data-action");
 		if (!action) return;
+		if (ev.target.disabled) return;
 		const handler = dataActions[action];
 		if (!handler) return;
 		const index = parseInt(ev.target.getAttribute("data-index"), 10);
@@ -729,3 +789,25 @@ Object.assign(dataActions, {
 });
 
 pageLoad();
+
+// Reload rules if another settings tab saves changes to storage.
+chrome.storage.onChanged.addListener((changes) => {
+	if (!changes.redirects) return;
+	if (ownSavePending > 0) {
+		ownSavePending--;
+		return;
+	}
+	// Only reload when no dialog is open (cover not visible)
+	if (el("#cover") && el("#cover").style.display === "block") return;
+	chrome.runtime.sendMessage({ type: "get-redirects" }, (response) => {
+		if (chrome.runtime.lastError || !response) return;
+		REDIRECTS.length = 0;
+		for (const r of response.redirects) {
+			REDIRECTS.push(new Redirect(r));
+		}
+		checkedIndices.clear();
+		selectedIndex = null;
+		renderRedirects();
+		showMessage("Rules updated by another window.", true);
+	});
+});

@@ -37,11 +37,13 @@ const importRedirects = (ev) => {
 			data = JSON.parse(reader.result);
 		} catch (e) {
 			showMessage(`Failed to parse JSON data, invalid JSON: ${(e.message || "").slice(0, 100)}`);
+			ev.target.value = "";
 			return;
 		}
 
 		if (!Array.isArray(data.redirects)) {
 			showMessage("Invalid JSON, missing \"redirects\" property");
+			ev.target.value = "";
 			return;
 		}
 
@@ -71,17 +73,21 @@ const importRedirects = (ev) => {
 
 		saveChanges();
 		renderRedirects();
+		ev.target.value = "";
 	};
 
 	try {
 		reader.readAsText(file, "utf-8");
 	} catch (e) {
 		showMessage("Failed to read import file");
+		ev.target.value = "";
 	}
 };
 
 const updateExportLink = () => {
-	const redirects = REDIRECTS.map((r) => new Redirect(r).toObject());
+	const redirects = checkedIndices.size > 0
+		? [...checkedIndices].sort((a, b) => a - b).map(i => REDIRECTS[i]).filter(Boolean).map(r => new Redirect(r).toObject())
+		: REDIRECTS.map((r) => new Redirect(r).toObject());
 
 	const	version = chrome.runtime.getManifest().version;
 
@@ -97,50 +103,9 @@ const updateExportLink = () => {
 	el("#export-link").href = `data:text/plain;charset=utf-8,${encodeURIComponent(json)}`;
 };
 
-const exportSingleRedirect = (index) => {
-	const isBulk = checkedIndices.size > 1 && checkedIndices.has(index);
-	const indices = isBulk ? [...checkedIndices].sort((a, b) => a - b) : [index];
-
-	const redirectObjects = indices.
-		map(i => REDIRECTS[i]).
-		filter(Boolean).
-		map(r => new Redirect(r).toObject());
-
-	if (redirectObjects.length === 0) {
-		showMessage("No redirects found to export");
-		return;
-	}
-
-	const version = chrome.runtime.getManifest().version;
-	const exportObj = {
-		createdBy: `Redirector v${version}`,
-		createdAt: new Date(),
-		redirects: redirectObjects
-	};
-	const json = JSON.stringify(exportObj, null, 4);
-
-	const label = isBulk
-		? `${redirectObjects.length}-redirects`
-		: (REDIRECTS[index]?.description || "My").replace(/[^a-zA-Z0-9]/g, "-").substring(0, 50);
-	const filename = `${label} redirector.json`;
-
-	const link = document.createElement("a");
-	link.href = `data:text/plain;charset=utf-8,${encodeURIComponent(json)}`;
-	link.download = filename;
-	document.body.appendChild(link);
-	link.click();
-	document.body.removeChild(link);
-
-	const msg = isBulk
-		? `Successfully exported ${redirectObjects.length} rules`
-		: `Successfully exported: ${REDIRECTS[index]?.description || "Unnamed redirect"}`;
-	showMessage(msg, true);
-};
-
 const setupImportExportEventListeners = () => {
 	el("#import-file").addEventListener("change", importRedirects);
 	el("#export-link").addEventListener("click", updateExportLink);
-	Object.assign(dataActions, { exportSingleRedirect });
 };
 
 setupImportExportEventListeners();

@@ -77,6 +77,7 @@ const collapseHelperPanel = () => {
 	el("#helper-toggle button").textContent = "Fill from URL pair...";
 	el("#helper-from-url").value = "";
 	el("#helper-to-url").value = "";
+	setHelperError(null);
 };
 
 const toggleHelperPanel = (ev) => {
@@ -86,6 +87,18 @@ const toggleHelperPanel = (ev) => {
 		el("#helper-from-url").focus();
 	} else {
 		collapseHelperPanel();
+	}
+};
+
+const setHelperError = (msg) => {
+	const err = el("#helper-error");
+	if (!err) return;
+	if (msg) {
+		err.textContent = msg;
+		err.classList.remove("hidden");
+	} else {
+		err.textContent = "";
+		err.classList.add("hidden");
 	}
 };
 
@@ -160,10 +173,18 @@ const generateRuleFromUrls = (fromUrl, toUrl) => {
 const generateFromHelper = () => {
 	const fromUrl = el("#helper-from-url").value.trim();
 	const toUrl = el("#helper-to-url").value.trim();
-	if (!fromUrl || !toUrl) return;
+	if (!fromUrl || !toUrl) {
+		setHelperError("Enter both a source and destination URL.");
+		return;
+	}
 
 	const result = generateRuleFromUrls(fromUrl, toUrl);
-	if (!result) return;
+	if (!result) {
+		setHelperError("URLs are identical. Enter different source and destination URLs.");
+		return;
+	}
+
+	setHelperError(null);
 
 	el("input[data-bind=\"includePattern\"]").value = result.includePattern;
 	el("input[data-bind=\"redirectUrl\"]").value = result.redirectUrl;
@@ -277,6 +298,8 @@ const setupEditAndDeleteEventListeners = () => {
 
 	el("#helper-toggle button").addEventListener("click", toggleHelperPanel);
 	el("#helper-generate").addEventListener("click", generateFromHelper);
+	el("#helper-from-url").addEventListener("input", () => setHelperError(null));
+	el("#helper-to-url").addEventListener("input", () => setHelperError(null));
 
 	el("#create-new-redirect").addEventListener("click", createNewRedirect);
 	// Listen to any change from the edit form...

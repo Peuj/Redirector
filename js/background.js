@@ -208,7 +208,12 @@ const createPartitionedRedirects = (redirects) => {
 
 	for (let i = 0; i < redirects.length; i++) {
 		const redirect = new Redirect(redirects[i]);
-		redirect.compile();
+		try {
+			redirect.compile();
+		} catch (e) {
+			log(`Skipping rule "${redirects[i].description || i}" — compile error: ${e.message}`, true);
+			continue;
+		}
 		for (let j = 0; j < redirect.appliesTo.length; j++) {
 			const requestType = redirect.appliesTo[j];
 			if (partitioned[requestType]) {

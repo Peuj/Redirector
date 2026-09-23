@@ -45,7 +45,7 @@ Two scripts load in order per `manifest.json`: `js/redirect.js` then `js/backgro
 - **`js/background.js`** — Registers `chrome.webRequest.onBeforeRequest` (blocking) and `chrome.webNavigation.onHistoryStateUpdated` (for SPAs like YouTube/Twitter). Maintains two anti-loop structures: `ignoreNextRequest` (URL → timestamp, prevents redirect target from being re-redirected) and `justRedirected` (stops loops when a URL is redirected 3+ times within 3 seconds). Listens for storage changes to rebuild partitioned rule sets.
 
 ### Settings page (`redirector.html`)
-Loads JS in this order: `stub.js` → `util.js` → `redirect.js` → `redirectorpage.js` → `editredirect.js` → `importexport.js` → `organizemode.js`.
+Loads JS in this order: `stub.js` → `util.js` → `redirect.js` → `redirectorpage.js` → `editredirect.js` → `importexport.js`.
 
 ### Custom data binding (`js/util.js`)
 No external framework. `dataBind(el, dataObject)` reads HTML attributes:
@@ -78,7 +78,7 @@ No external framework. `dataBind(el, dataObject)` reads HTML attributes:
   patternType: 'W' | 'R',        // Wildcard or Regex
   processMatches: 'noProcessing' | 'urlEncode' | 'urlDecode' | 'doubleUrlDecode' | 'base64decode',
   disabled: boolean,
-  grouped: boolean,              // UI-only: organize mode selection
+  grouped: boolean,              // session-only: tracks checkbox selection state; always false on load
   appliesTo: string[]            // request types: main_frame, sub_frame, script, image, etc.
 }
 ```

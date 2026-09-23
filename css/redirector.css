@@ -253,7 +253,8 @@ button[disabled] {
   pointer-events: none;
 }
 
-button span {
+button span,
+button i {
   pointer-events: none;
 }
 
@@ -491,10 +492,6 @@ span.disabled,
     background: rgb(96 165 250 / 0.18) !important;
     outline-color: rgb(96 165 250 / 0.45);
   }
-
-  .redirect-row.grouped {
-    outline-color: rgb(96 165 250 / 0.5);
-  }
 }
 
 .move-up-btn,
@@ -505,13 +502,24 @@ span.disabled,
   padding: 4px 0 !important;
 }
 
-.redirect-row.grouped {
-  outline: 2px solid rgb(0 95 184 / 0.5);
-  outline-offset: -2px;
+.move-uptop-btn[disabled],
+.move-up-btn[disabled],
+.move-down-btn[disabled],
+.move-downbottom-btn[disabled] {
+  pointer-events: auto;
+}
+
+.move-uptop-btn[disabled]:hover,
+.move-up-btn[disabled]:hover,
+.move-down-btn[disabled]:hover,
+.move-downbottom-btn[disabled]:hover {
+  background: var(--grey-bg);
+  border-color: var(--border);
+  cursor: default;
 }
 
 /* ================================================================
-   Organize-mode checkbox
+   Selection checkbox
    ================================================================ */
 
 label.toggle-container {

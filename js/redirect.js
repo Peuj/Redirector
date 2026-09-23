@@ -170,6 +170,11 @@ Redirect.prototype = {
 			return;
 		}
 
+		if (!this.redirectUrl) {
+			this.error = "Redirect URL is required.";
+			return;
+		}
+
 		if (this.patternType === Redirect.REGEX && this.includePattern) {
 			try {
 				// eslint-disable-next-line no-new
@@ -200,12 +205,51 @@ Redirect.prototype = {
 			}
 		}
 
+		if (this.patternType === Redirect.REGEX && this.sourcePattern) {
+			try {
+				// eslint-disable-next-line no-new
+				new RegExp(this.sourcePattern, "i");
+			} catch (e) {
+				this.error = "Invalid regular expression in Source pattern.";
+				return;
+			}
+		}
+
+		if (this.processMatches === "replace" && !this.replaceFrom) {
+			this.error = "Enter a Find value for Replace processing.";
+			return;
+		}
+
+		const isRegex = this.patternType === Redirect.REGEX;
+		const incSafetyErr = Redirect.validateRegexSafety(this.includePattern, isRegex);
+		if (incSafetyErr) {
+			this.error = incSafetyErr;
+			return;
+		}
+		const excSafetyErr = Redirect.validateRegexSafety(this.excludePattern, isRegex);
+		if (excSafetyErr) {
+			this.error = excSafetyErr;
+			return;
+		}
+		if (this.processMatches === "replace" && this.usePatternForReplace) {
+			const replSafetyErr = Redirect.validateRegexSafety(this.replacePattern, isRegex);
+			if (replSafetyErr) {
+				this.error = replSafetyErr;
+				return;
+			}
+		}
+
 		if (!this.appliesTo || this.appliesTo.length === 0) {
 			this.error = "At least one request type must be chosen.";
 			return;
 		}
 
-		this.compile();
+		try {
+			this.compile();
+		} catch (e) {
+			this.error = "Pattern compilation error.";
+			return;
+		}
 
 		const match = this.getMatch(this.exampleUrl, true);
 

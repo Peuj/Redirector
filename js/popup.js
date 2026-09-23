@@ -23,12 +23,15 @@ const openRedirectorSettings = () => {
 
 	// FIREFOXBUG: Firefox chokes on url:url filter if the url is a moz-extension:// url
 	// so we don't use that, do it the more manual way instead.
-	chrome.tabs.query({ currentWindow: true }, (tabs) => {
+	// Search ALL windows, not just the current one, to enforce a single settings tab.
+	chrome.tabs.query({}, (tabs) => {
 		for (let i = 0; i < tabs.length; i++) {
 			if (tabs[i].url == url) {
-				chrome.tabs.update(tabs[i].id, { active: true }, () => {
-					close();
-				});
+				chrome.tabs.update(tabs[i].id, { active: true });
+				if (tabs[i].windowId) {
+					chrome.windows.update(tabs[i].windowId, { focused: true });
+				}
+				close();
 				return;
 			}
 		}
