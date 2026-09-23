@@ -47,6 +47,20 @@ const importRedirects = (ev) => {
 			return;
 		}
 
+		// Pre-build a canonical key for each existing redirect so duplicate
+		// detection is O(n+m) rather than O(n*m).
+		const redirectKey = (r) => {
+			const appliesTo = r.appliesTo.slice().sort().join(",");
+			return [
+				r.description, r.exampleUrl, r.includePattern, r.excludePattern,
+				r.patternDesc, r.redirectUrl, r.patternType, r.processMatches,
+				r.replaceFrom, r.replacePattern, r.replacement,
+				String(r.replaceAll), String(r.usePatternForReplace),
+				String(r.allowLoops), r.sourcePattern, appliesTo
+			].join("\0");
+		};
+		const existingKeys = new Set(REDIRECTS.map(item => redirectKey(new Redirect(item))));
+
 		let imported = 0,
 			existing = 0,
 			unsafe = 0;
@@ -61,9 +75,11 @@ const importRedirects = (ev) => {
 				continue;
 			}
 			r.updateExampleResult();
-			if (REDIRECTS.some(item => new Redirect(item).equals(r))) {
+			const key = redirectKey(r);
+			if (existingKeys.has(key)) {
 				existing++;
 			} else {
+				existingKeys.add(key); // also prevent duplicates within the imported file itself
 				REDIRECTS.push(r);
 				imported++;
 			}

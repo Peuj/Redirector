@@ -229,6 +229,10 @@ const editFormChange = () => {
 
 	toggleReplaceProcessForm(activeRedirect.processMatches);
 
+	const isChromium = !navigator.userAgent.match(/Firefox/i);
+	const transformActive = activeRedirect.processMatches !== "noProcessing";
+	el("#chromium-transform-warning").classList.toggle("hidden", !(isChromium && transformActive));
+
 	activeRedirect.updateExampleResult();
 
 	dataBind("#edit-redirect-form", activeRedirect);
@@ -238,9 +242,7 @@ const editFormChange = () => {
 let deleteIndex;
 const confirmDeleteRedirect = (index) => {
 	if (checkedIndices.size > 1 && checkedIndices.has(index)) {
-		const count = checkedIndices.size;
-		el("#delete-all-form h3").textContent = `Delete ${count} Selected Rules`;
-		el("#delete-all-form div p").innerHTML = `Are you sure you want to delete <strong>${count}</strong> selected rules? This action cannot be undone.`;
+		el("#delete-all-count").textContent = checkedIndices.size;
 		showForm("#delete-all-form");
 	} else {
 		deleteIndex = index;
@@ -272,9 +274,6 @@ const deleteRedirect = () => {
 	// Apply new checked state to modified REDIRECTS
 	checkedIndices.clear();
 	for (const idx of newChecked) checkedIndices.add(idx);
-	for (let i = 0; i < REDIRECTS.length; i++) {
-		if (REDIRECTS[i]) REDIRECTS[i].grouped = newChecked.has(i);
-	}
 
 	updateBindings();
 	saveChanges();
@@ -293,6 +292,20 @@ const setupEditAndDeleteEventListeners = () => {
 
 	el("#confirm-delete").addEventListener("click", deleteRedirect);
 	el("#cancel-delete").addEventListener("click", cancelDelete);
+
+	// Escape key fires the dialog's cancel event; mirror it to our own cancel functions
+	el("#edit-redirect-form").addEventListener("cancel", (ev) => {
+		ev.preventDefault();
+		cancelEdit();
+	});
+	el("#delete-redirect-form").addEventListener("cancel", (ev) => {
+		ev.preventDefault();
+		cancelDelete();
+	});
+	el("#delete-all-form").addEventListener("cancel", (ev) => {
+		ev.preventDefault();
+		cancelDeleteAll();
+	});
 
 	el("#advanced-toggle button").addEventListener("click", toggleAdvancedOptions);
 

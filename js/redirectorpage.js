@@ -8,8 +8,8 @@ let selectedIndex = null;
 let priorSelectedIndex = null; // selectedIndex snapshot before each .redirect-rows action
 const checkedIndices = new Set();
 
-// Tracks how many of our own saves are pending storage notification, to avoid
-// treating our own storage writes as external changes in the concurrent-tab listener.
+// Counts our own pending saves so the concurrent-tab storage listener
+// can distinguish our own writes from external changes.
 let ownSavePending = 0;
 
 const normalize = (r) => new Redirect(r).toObject();
@@ -56,21 +56,23 @@ const toggleSyncSetting = () => {
 	});
 };
 
+// Build the context object passed to dataBind for a single row.
+// Sentinel flags ($first, $last, $index) are passed separately so the
+// REDIRECTS data object is never mutated.
+const buildRowContext = (redirect, index) => {
+	return Object.assign(Object.create(redirect), {
+		$first: index === 0,
+		$last: index === REDIRECTS.length - 1,
+		$index: index
+	});
+};
+
 const renderSingleRedirect = (node, redirect, index) => {
-	if (index === 0) redirect.$first = true;
-	if (index === REDIRECTS.length - 1) redirect.$last = true;
-	redirect.$index = index;
-
-	dataBind(node, redirect);
-
+	dataBind(node, buildRowContext(redirect, index));
 	node.setAttribute("data-index", index);
 	for (const btn of node.querySelectorAll(".btn")) {
 		btn.setAttribute("data-index", index);
 	}
-
-	delete redirect.$first;
-	delete redirect.$last;
-	delete redirect.$index;
 };
 
 const renderRedirects = () => {
@@ -81,7 +83,6 @@ const renderRedirects = () => {
 		renderSingleRedirect(node, REDIRECTS[i], i);
 		el(".redirect-rows").appendChild(node);
 	}
-	updateExportLink();
 	refreshUIState();
 };
 
@@ -121,7 +122,6 @@ const handleCheckboxClick = (input) => {
 		checkedIndices.add(index);
 		if (checkmark) checkmark.classList.add("checkMarked");
 		row.classList.add("checked");
-		if (REDIRECTS[index]) REDIRECTS[index].grouped = true;
 		if (checkedIndices.size === 1) {
 			selectRow(index);
 		} else if (selectedIndex !== null) {
@@ -133,15 +133,12 @@ const handleCheckboxClick = (input) => {
 		checkedIndices.delete(index);
 		if (checkmark) checkmark.classList.remove("checkMarked");
 		row.classList.remove("checked");
-		if (REDIRECTS[index]) REDIRECTS[index].grouped = false;
 		if (checkedIndices.size === 1) {
 			selectRow([...checkedIndices][0]);
-		} else if (checkedIndices.size === 0) {
-			if (selectedIndex !== null) {
-				const sel = document.querySelector(`.redirect-row[data-index="${selectedIndex}"]`);
-				if (sel) sel.classList.remove("selected");
-				selectedIndex = null;
-			}
+		} else if (checkedIndices.size === 0 && selectedIndex !== null) {
+			const sel = document.querySelector(`.redirect-row[data-index="${selectedIndex}"]`);
+			if (sel) sel.classList.remove("selected");
+			selectedIndex = null;
 		}
 	}
 	updateActionStates();
@@ -207,15 +204,12 @@ const updateActionStates = () => {
 		}
 	}
 
-	// Per-row boundary reset — always correct for single/no selection.
 	for (const row of document.querySelectorAll(".redirect-row")) {
 		const idx = parseInt(row.getAttribute("data-index"), 10);
 		if (isNaN(idx)) continue;
 		setRowMoveState(row, idx !== 0, idx !== REDIRECTS.length - 1);
 	}
 
-	// Multi-select: override checked rows with group boundary state.
-	// Unchecked rows keep the per-row boundary state set above.
 	if (multiChecked) {
 		const grouping = checkIfGroupingExists();
 		if (grouping.length > 1) {
@@ -249,7 +243,6 @@ const updateExportButtonLabel = () => {
 	}
 };
 
-
 const refreshUIState = () => {
 	restoreSelectionState();
 	updateActionStates();
@@ -261,24 +254,20 @@ const refreshUIState = () => {
 
 const duplicateRedirect = (index) => {
 	const redirect = new Redirect(REDIRECTS[index]);
-	redirect.grouped = false; // duplicate starts unchecked regardless of original
 	const now = new Date();
 	const pad = (n) => String(n).padStart(2, "0");
 	const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 	redirect.description = `${redirect.description} copy ${ts}`;
 	REDIRECTS.splice(index, 0, redirect);
 
-	// Shift selection/checked state for the insertion point
+	// Shift selection/checked state past the insertion point
 	if (selectedIndex !== null && selectedIndex >= index) selectedIndex++;
 	const shifted = new Set();
 	for (const idx of checkedIndices) {
 		shifted.add(idx >= index ? idx + 1 : idx);
 	}
 	checkedIndices.clear();
-	for (const idx of shifted) {
-		checkedIndices.add(idx);
-		if (REDIRECTS[idx]) REDIRECTS[idx].grouped = true;
-	}
+	for (const idx of shifted) checkedIndices.add(idx);
 
 	const newNode = template.cloneNode(true);
 	newNode.removeAttribute("id");
@@ -294,22 +283,15 @@ const checkIfGroupingExists = () => {
 		filter(item => item.row);
 };
 
-// Sync REDIRECTS[i].grouped with checkedIndices after any move
-const syncGroupedProps = () => {
-	for (let i = 0; i < REDIRECTS.length; i++) {
-		if (REDIRECTS[i]) REDIRECTS[i].grouped = checkedIndices.has(i);
-	}
-};
-
 const toggleDisabled = (index) => {
 	if (checkedIndices.size > 1 && checkedIndices.has(index)) {
-		// Use the clicked rule's state to determine the action for the whole group,
-		// so the button label ("Enable"/"Disable") always matches what actually happens.
 		const targetDisabled = REDIRECTS[index] ? !REDIRECTS[index].disabled : false;
 		for (const i of checkedIndices) {
 			if (REDIRECTS[i]) REDIRECTS[i].disabled = targetDisabled;
 		}
-	} else if (REDIRECTS[index]) REDIRECTS[index].disabled = !REDIRECTS[index].disabled;
+	} else if (REDIRECTS[index]) {
+		REDIRECTS[index].disabled = !REDIRECTS[index].disabled;
+	}
 	updateBindings();
 	saveChanges();
 };
@@ -318,37 +300,21 @@ const moveUp = (index) => {
 	const grouping = checkIfGroupingExists();
 
 	if (grouping.length > 1 && checkedIndices.has(index)) {
-		const jumpLength = 1;
-		if (grouping[0].index - jumpLength < 0) return;
-
+		if (grouping[0].index === 0) return;
 		const oldGroupIndices = new Set(grouping.map(g => g.index));
-
-		// Swap data (forward order is safe for move-up)
 		for (const rule of grouping) {
-			const temp = REDIRECTS[rule.index - jumpLength];
-			REDIRECTS[rule.index - jumpLength] = REDIRECTS[rule.index];
-			REDIRECTS[rule.index] = temp;
+			[REDIRECTS[rule.index - 1], REDIRECTS[rule.index]] = [REDIRECTS[rule.index], REDIRECTS[rule.index - 1]];
 		}
-
-		// Update checkedIndices
 		const newChecked = new Set();
-		for (const idx of checkedIndices) {
-			newChecked.add(oldGroupIndices.has(idx) ? idx - jumpLength : idx);
-		}
+		for (const idx of checkedIndices) newChecked.add(oldGroupIndices.has(idx) ? idx - 1 : idx);
 		checkedIndices.clear();
 		for (const idx of newChecked) checkedIndices.add(idx);
-
-		// Update selectedIndex
-		if (selectedIndex !== null && oldGroupIndices.has(selectedIndex)) {
-			selectedIndex -= jumpLength;
-		}
+		if (selectedIndex !== null && oldGroupIndices.has(selectedIndex)) selectedIndex--;
 	} else {
 		if (index <= 0) return;
 		[REDIRECTS[index - 1], REDIRECTS[index]] = [REDIRECTS[index], REDIRECTS[index - 1]];
-
 		if (selectedIndex === index) selectedIndex--;
 		else if (selectedIndex === index - 1) selectedIndex++;
-
 		const hadIdx = checkedIndices.has(index);
 		const hadPrev = checkedIndices.has(index - 1);
 		if (hadIdx !== hadPrev) {
@@ -363,7 +329,6 @@ const moveUp = (index) => {
 		}
 	}
 
-	syncGroupedProps();
 	updateBindings();
 	saveChanges();
 };
@@ -372,36 +337,22 @@ const moveDown = (index) => {
 	const grouping = checkIfGroupingExists();
 
 	if (grouping.length > 1 && checkedIndices.has(index)) {
-		const jumpLength = 1;
-		if (grouping[grouping.length - 1].index + jumpLength >= REDIRECTS.length) return;
-
+		if (grouping[grouping.length - 1].index + 1 >= REDIRECTS.length) return;
 		const oldGroupIndices = new Set(grouping.map(g => g.index));
-
-		// Reverse order avoids overwriting when moving down
 		for (let i = grouping.length - 1; i >= 0; i--) {
 			const rule = grouping[i];
-			const temp = REDIRECTS[rule.index + jumpLength];
-			REDIRECTS[rule.index + jumpLength] = REDIRECTS[rule.index];
-			REDIRECTS[rule.index] = temp;
+			[REDIRECTS[rule.index + 1], REDIRECTS[rule.index]] = [REDIRECTS[rule.index], REDIRECTS[rule.index + 1]];
 		}
-
 		const newChecked = new Set();
-		for (const idx of checkedIndices) {
-			newChecked.add(oldGroupIndices.has(idx) ? idx + jumpLength : idx);
-		}
+		for (const idx of checkedIndices) newChecked.add(oldGroupIndices.has(idx) ? idx + 1 : idx);
 		checkedIndices.clear();
 		for (const idx of newChecked) checkedIndices.add(idx);
-
-		if (selectedIndex !== null && oldGroupIndices.has(selectedIndex)) {
-			selectedIndex += jumpLength;
-		}
+		if (selectedIndex !== null && oldGroupIndices.has(selectedIndex)) selectedIndex++;
 	} else {
 		if (index >= REDIRECTS.length - 1) return;
 		[REDIRECTS[index + 1], REDIRECTS[index]] = [REDIRECTS[index], REDIRECTS[index + 1]];
-
 		if (selectedIndex === index) selectedIndex++;
 		else if (selectedIndex === index + 1) selectedIndex--;
-
 		const hadIdx = checkedIndices.has(index);
 		const hadNext = checkedIndices.has(index + 1);
 		if (hadIdx !== hadNext) {
@@ -416,7 +367,6 @@ const moveDown = (index) => {
 		}
 	}
 
-	syncGroupedProps();
 	updateBindings();
 	saveChanges();
 };
@@ -424,14 +374,13 @@ const moveDown = (index) => {
 const moveUpTop = (index) => {
 	if (checkedIndices.size > 1 && checkedIndices.has(index)) {
 		const grouping = checkIfGroupingExists();
-		const sortedIdx = grouping.map(g => g.index).sort((a, b) => a - b);
-		if (sortedIdx.every((idx, i) => idx === i)) return; // already at top
+		const sortedIdx = grouping.map(g => g.index);
+		if (sortedIdx.every((idx, i) => idx === i)) return;
 		const groupItems = grouping.map(g => REDIRECTS[g.index]);
 		const others = REDIRECTS.filter((_, i) => !checkedIndices.has(i));
 		REDIRECTS.splice(0, REDIRECTS.length, ...groupItems, ...others);
 		checkedIndices.clear();
 		for (let i = 0; i < groupItems.length; i++) checkedIndices.add(i);
-		// Keep selectedIndex if it was in the group; map to new position
 		if (selectedIndex !== null) {
 			const groupPos = grouping.findIndex(g => g.index === selectedIndex);
 			selectedIndex = groupPos >= 0 ? groupPos : null;
@@ -451,7 +400,6 @@ const moveUpTop = (index) => {
 		checkedIndices.clear();
 		for (const idx of newChecked) checkedIndices.add(idx);
 	}
-	syncGroupedProps();
 	updateBindings();
 	saveChanges();
 };
@@ -459,9 +407,9 @@ const moveUpTop = (index) => {
 const moveDownBottom = (index) => {
 	if (checkedIndices.size > 1 && checkedIndices.has(index)) {
 		const grouping = checkIfGroupingExists();
-		const sortedIdx = grouping.map(g => g.index).sort((a, b) => a - b);
+		const sortedIdx = grouping.map(g => g.index);
 		const lastBase = REDIRECTS.length - grouping.length;
-		if (sortedIdx.every((idx, i) => idx === lastBase + i)) return; // already at bottom
+		if (sortedIdx.every((idx, i) => idx === lastBase + i)) return;
 		const groupItems = grouping.map(g => REDIRECTS[g.index]);
 		const others = REDIRECTS.filter((_, i) => !checkedIndices.has(i));
 		REDIRECTS.splice(0, REDIRECTS.length, ...others, ...groupItems);
@@ -488,7 +436,6 @@ const moveDownBottom = (index) => {
 		checkedIndices.clear();
 		for (const idx of newChecked) checkedIndices.add(idx);
 	}
-	syncGroupedProps();
 	updateBindings();
 	saveChanges();
 };
@@ -498,15 +445,9 @@ const selectAll = () => {
 	const allChecked = checkedIndices.size === REDIRECTS.length;
 	if (allChecked) {
 		checkedIndices.clear();
-		for (const r of REDIRECTS) {
-			if (r) r.grouped = false;
-		}
 	} else {
 		checkedIndices.clear();
-		for (let i = 0; i < REDIRECTS.length; i++) {
-			checkedIndices.add(i);
-			if (REDIRECTS[i]) REDIRECTS[i].grouped = true;
-		}
+		for (let i = 0; i < REDIRECTS.length; i++) checkedIndices.add(i);
 		selectedIndex = null;
 	}
 	restoreSelectionState();
@@ -534,10 +475,6 @@ const confirmDeleteAll = () => {
 	}
 
 	checkedIndices.clear();
-	for (const r of REDIRECTS) {
-		if (r) r.grouped = false;
-	}
-
 	updateBindings();
 	saveChanges();
 	hideForm("#delete-all-form");
@@ -682,8 +619,8 @@ const pageLoad = () => {
 
 	chrome.runtime.sendMessage({ type: "get-redirects" }, (response) => {
 		console.log(`Received redirects message, count=${response.redirects.length}`);
-		for (let i = 0; i < response.redirects.length; i++) {
-			REDIRECTS.push(new Redirect(response.redirects[i]));
+		for (const r of response.redirects) {
+			REDIRECTS.push(new Redirect(r));
 		}
 		if (response.redirects.length === 0) {
 			REDIRECTS.push(new Redirect({
@@ -717,6 +654,7 @@ const pageLoad = () => {
 
 	if (navigator.userAgent.toLowerCase().includes("chrome")) {
 		show("#storage-sync-option");
+		document.body.classList.add("is-chromium");
 	}
 
 	el("#hide-message").addEventListener("click", hideMessage);
@@ -732,14 +670,18 @@ const pageLoad = () => {
 		updateAddButtonState();
 		scheduleVariableSave();
 	});
+
+	// Trigger the hidden file input via the accessible button
+	el("#import-btn").addEventListener("click", () => el("#import-file").click());
+
 	el(".redirect-rows").addEventListener("click", (ev) => {
-		// Checkbox click: handleCheckboxClick fully owns selection state for checkboxes
+		// Checkbox clicks fully own selection state
 		if (ev.target.type === "checkbox") {
 			handleCheckboxClick(ev.target);
 			return;
 		}
 
-		// Non-checkbox click: select the clicked row then run any action
+		// Non-checkbox click: select the row then run any button action
 		const row = ev.target.closest(".redirect-row");
 		if (row) {
 			const idx = parseInt(row.getAttribute("data-index"), 10);
@@ -758,9 +700,10 @@ const pageLoad = () => {
 		handler(index);
 	});
 
-	// Clicking outside any rule deselects the selected row
+	// Clicking outside any rule deselects; dialogs are in the top layer so
+	// their backdrop clicks never reach this listener.
 	document.addEventListener("click", (ev) => {
-		if (ev.target.closest(".redirect-row, #cover, #delete-redirect-form, #delete-all-form, #edit-redirect-form")) return;
+		if (ev.target.closest(".redirect-row")) return;
 		if (selectedIndex === null) return;
 		const selectedRow = document.querySelector(`.redirect-row[data-index="${selectedIndex}"]`);
 		if (selectedRow) selectedRow.classList.remove("selected");
@@ -772,7 +715,6 @@ const pageLoad = () => {
 const updateFavicon = (e) => {
 	const type = e.matches ? "dark" : "light";
 	el("link[rel=\"icon\"]").href = `images/icon-${type}-theme-32.png`;
-	chrome.runtime.sendMessage({ type: "update-icon" });
 };
 
 const mql = window.matchMedia("(prefers-color-scheme:dark)");
@@ -797,8 +739,9 @@ chrome.storage.onChanged.addListener((changes) => {
 		ownSavePending--;
 		return;
 	}
-	// Only reload when no dialog is open (cover not visible)
-	if (el("#cover") && el("#cover").style.display === "block") return;
+	// Don't reload while a dialog is open — the user may be mid-edit
+	const openDialog = document.querySelector("dialog[open]");
+	if (openDialog) return;
 	chrome.runtime.sendMessage({ type: "get-redirects" }, (response) => {
 		if (chrome.runtime.lastError || !response) return;
 		REDIRECTS.length = 0;

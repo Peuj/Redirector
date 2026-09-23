@@ -11,11 +11,9 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 	</head>
 	<body>
-		<div id="cover">
-		</div>
 
-		<!-- Confirmation form for deleting redirects -->
-		<div id="delete-redirect-form" role="dialog" aria-modal="true" aria-labelledby="delete-redirect-heading">
+		<!-- Confirmation dialog for deleting a single redirect -->
+		<dialog id="delete-redirect-form" aria-labelledby="delete-redirect-heading">
 			<h3 id="delete-redirect-heading">Are you sure you want to delete this redirect?</h3>
 			<div>
 				<span class="field-key">Description:</span>
@@ -41,23 +39,22 @@
 				<button id="confirm-delete" class="btn red large">Delete</button>
 				<button id="cancel-delete" class="btn grey large">Cancel</button>
 			</div>
-		</div>
+		</dialog>
 
-		<!-- Confirmation form for deleting all redirects -->
-		<div id="delete-all-form" role="dialog" aria-modal="true" aria-labelledby="delete-all-heading">
+		<!-- Confirmation dialog for deleting selected redirects -->
+		<dialog id="delete-all-form" aria-labelledby="delete-all-heading">
 			<h3 id="delete-all-heading">Delete Selected Rules</h3>
 			<div>
-				<p>Are you sure you want to delete the <strong>selected</strong> rules? This action cannot be undone.</p>
+				<p>Are you sure you want to delete <strong id="delete-all-count"></strong> selected rules? This action cannot be undone.</p>
 			</div>
 			<div class="button-container">
 				<button id="confirm-delete-all" class="btn red large">Delete</button>
 				<button id="cancel-delete-all" class="btn grey large">Cancel</button>
 			</div>
-		</div>
+		</dialog>
 
-
-		<!-- Form for creating and editing redirects -->
-		<div id="edit-redirect-form" role="dialog" aria-modal="true" aria-labelledby="edit-redirect-heading">
+		<!-- Dialog for creating and editing redirects -->
+		<dialog id="edit-redirect-form" aria-labelledby="edit-redirect-heading">
 			<h3 id="edit-redirect-heading">Create Redirect</h3>
 			<div id="helper-section">
 				<div id="helper-toggle">
@@ -92,7 +89,7 @@
 				</div>
 				<div>
 					<label>Include pattern:</label>
-					<div class="input-cell"><input type="text" data-bind="includePattern"  placeholder="Pattern that matches the urls you want to redirect" /></div>
+					<div class="input-cell"><input type="text" data-bind="includePattern" placeholder="Pattern that matches the urls you want to redirect" /></div>
 				</div>
 				<div>
 					<label>Redirect to:</label>
@@ -137,6 +134,7 @@
 							<option value="base64Decode">Base64 Decode</option>
 						</select>
 						<span class="placeholder" data-bind="processMatchesExampleText"></span>
+						<p id="chromium-transform-warning" class="warning-text hidden">This transform is not supported on Chrome/Edge/Opera. The rule will be ignored on those browsers.</p>
 					</div>
 				</div>
 				<div class="replace-process-input hidden">
@@ -184,7 +182,7 @@
 				<button id="btn-save-redirect" data-disabled="error" data-class="disabled:error" class="btn green large">Save</button>
 				<button id="btn-cancel-edit" class="btn red large">Cancel</button>
 			</div>
-		</div>
+		</dialog>
 
 
 		<div id="blur-wrapper">
@@ -198,10 +196,10 @@
 			<div id="menu">
 				<button id="create-new-redirect" class="btn blue large">New Redirect</button>
 
-				<!-- Importing/Exporting of redirects -->
+				<!-- Import / Export -->
 				<span>
-					<input type="file" id="import-file" accept=".rjson,.json,.txt"  />
-					<label for="import-file" class="btn blue large">Import</label>
+					<input type="file" id="import-file" accept=".rjson,.json,.txt" aria-hidden="true" />
+					<button type="button" id="import-btn" class="btn blue large">Import</button>
 					<a class="btn blue large" id="export-link" download="Redirector.json">Export All</a>
 				</span>
 
@@ -209,8 +207,7 @@
 				<button id="select-all-btn" class="btn grey large">Select All</button>
 			</div>
 
-
-				<div id="message-box">
+			<div id="message-box" role="status" aria-live="polite" aria-atomic="true">
 				<span data-bind="message" id="message"></span>
 				<button id="hide-message" aria-label="Close message">&#x2716;</button>
 			</div>

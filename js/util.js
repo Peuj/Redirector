@@ -6,15 +6,15 @@ const dataBind = (root, dataObject) => {
 
 	const elem = typeof root === "string" ? document.querySelector(root) : root;
 	for (const tag of elem.querySelectorAll("[data-bind]")) {
-			const prop = tag.getAttribute("data-bind");
+		const prop = tag.getAttribute("data-bind");
 		if (tag.tagName.toLowerCase() === "input") {
 			const type = (tag.getAttribute("type") || "").toLowerCase();
 			if (type === "radio") {
 				tag.checked = dataObject[prop] === tag.getAttribute("value");
-            } else if (type === "checkbox") {
-                tag.checked = dataObject[prop];
-            } else {
-                tag.value = dataObject[prop];
+			} else if (type === "checkbox") {
+				tag.checked = dataObject[prop];
+			} else {
+				tag.value = dataObject[prop];
 			}
 		} else if (tag.tagName.toLowerCase() === "select") {
 			for (const opt of tag.querySelectorAll("option")) {
@@ -27,11 +27,9 @@ const dataBind = (root, dataObject) => {
 				}
 			}
 		} else if (Array.isArray(dataObject[prop])) {
-			// Array of values, check any checkboxes in child elements
 			for (const checkbox of tag.querySelectorAll("input[type=\"checkbox\"]")) {
 				checkbox.checked = dataObject[prop].includes(checkbox.getAttribute("value"));
 			}
-
 		} else {
 			tag.textContent = dataObject[prop];
 		}
@@ -42,7 +40,6 @@ const dataBind = (root, dataObject) => {
 	}
 	for (const tag of elem.querySelectorAll("[data-disabled]")) {
 		const isDisabled = boolValue(tag.getAttribute("data-disabled"));
-
 		if (isDisabled) {
 			tag.classList.add("disabled");
 			tag.setAttribute("disabled", "disabled");
@@ -74,21 +71,26 @@ const hide = (id) => {
 
 const el = (query) => document.querySelector(query);
 
+// Opens a native <dialog> as a modal. Stores the currently focused element so
+// hideForm can restore focus when the dialog closes.
 const showForm = (selector, dataObject) => {
-	dataBind(selector, dataObject);
-	el("#blur-wrapper").classList.add("blur");
-	show("#cover");
-	show(selector);
+	const dialog = el(selector);
+	dialog._openerEl = document.activeElement;
+	if (dataObject) dataBind(selector, dataObject);
+	dialog.showModal();
+};
+
+// Closes the dialog and returns focus to the element that was active before it opened.
+const hideForm = (selector) => {
+	const dialog = el(selector);
+	const opener = dialog._openerEl;
+	dialog._openerEl = null;
+	dialog.close();
+	if (opener && typeof opener.focus === "function") opener.focus();
 };
 
 const move = (arr, from, to) => {
-    arr.splice(to, 0, arr.splice(from, 1)[0]);
-};
-
-const hideForm = (selector) => {
-	hide("#cover");
-	hide(selector);
-	el("#blur-wrapper").classList.remove("blur");
+	arr.splice(to, 0, arr.splice(from, 1)[0]);
 };
 
 // Shows a message bar above the list of redirects.
@@ -102,11 +104,9 @@ const showMessage = (message, success) => {
 	}
 
 	const timer = 20;
-
-	// Remove the message in 20 seconds if it hasn't been changed...
 	setTimeout(() => {
 		if (el("#message").textContent === message) {
-			messageBox.className = ""; // Removing .visible removes the box...
+			messageBox.className = "";
 		}
 	}, timer * 1000);
 };

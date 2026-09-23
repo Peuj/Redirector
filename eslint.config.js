@@ -38,6 +38,7 @@ module.exports = [
                 selectedIndex: "writable",
                 priorSelectedIndex: "writable",
                 checkedIndices: "writable",
+                cancelDeleteAll: "writable",
                 // Cross-file globals: importexport.js → redirectorpage.js
                 updateExportLink: "writable",
                 // Service worker global (Chrome MV3 background)
