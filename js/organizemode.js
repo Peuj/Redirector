@@ -1,1 +1,0 @@
-// Organize mode removed — checkboxes and all arrows are always available.

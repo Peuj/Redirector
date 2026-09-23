@@ -6,8 +6,10 @@ const createNewRedirect = () => {
 	activeRedirect = new Redirect();
 	el("#edit-redirect-form h3").textContent = "Create Redirect";
 	collapseAdvancedOptions();
+	expandHelperPanel();
 	showForm("#edit-redirect-form", activeRedirect);
 	el("#btn-save-redirect").setAttribute("disabled", "disabled");
+	setTimeout(() => el("#helper-from-url").focus(), 200);
 };
 
 const editRedirect = (index) => {
@@ -16,6 +18,7 @@ const editRedirect = (index) => {
 	activeRedirect.existing = true;
 	activeRedirect.index = index;
 	collapseAdvancedOptions();
+	collapseHelperPanel();
 	toggleReplaceProcessForm(activeRedirect.processMatches);
 	showForm("#edit-redirect-form", activeRedirect);
 	setTimeout(() => el("input[data-bind=\"description\"]").focus(), 200); // Why not working...?
@@ -23,6 +26,7 @@ const editRedirect = (index) => {
 
 const cancelEdit = () => {
 	collapseAdvancedOptions();
+	collapseHelperPanel();
 	toggleReplaceProcessForm(null, true);
 	activeRedirect = null;
 	hideForm("#edit-redirect-form");
@@ -42,6 +46,7 @@ const saveRedirect = () => {
 	updateBindings();
 	saveChanges();
 	collapseAdvancedOptions();
+	collapseHelperPanel();
 	hideForm("#edit-redirect-form");
 };
 
@@ -60,6 +65,118 @@ const toggleAdvancedOptions = (ev) => {
 const collapseAdvancedOptions = () => {
 	el(".advanced").classList.add("hidden");
 	el("#advanced-toggle button").textContent = "Advanced options...";
+};
+
+const expandHelperPanel = () => {
+	el("#helper-panel").classList.remove("hidden");
+	el("#helper-toggle button").textContent = "Hide URL helper...";
+};
+
+const collapseHelperPanel = () => {
+	el("#helper-panel").classList.add("hidden");
+	el("#helper-toggle button").textContent = "Fill from URL pair...";
+	el("#helper-from-url").value = "";
+	el("#helper-to-url").value = "";
+};
+
+const toggleHelperPanel = (ev) => {
+	ev.preventDefault();
+	if (el("#helper-panel").classList.contains("hidden")) {
+		expandHelperPanel();
+		el("#helper-from-url").focus();
+	} else {
+		collapseHelperPanel();
+	}
+};
+
+const generateRuleFromUrls = (fromUrl, toUrl) => {
+	if (!fromUrl || !toUrl || fromUrl === toUrl) return null;
+
+	let fromParsed, toParsed;
+	try {
+		fromParsed = new URL(fromUrl);
+		toParsed = new URL(toUrl);
+	} catch (_) {
+		fromParsed = null;
+		toParsed = null;
+	}
+
+	let description = "";
+	if (fromParsed && toParsed && fromParsed.hostname !== toParsed.hostname) {
+		description = `Redirect ${fromParsed.hostname} to ${toParsed.hostname}`;
+	}
+
+	if (fromParsed && toParsed) {
+		const fromRest = fromParsed.pathname + fromParsed.search + fromParsed.hash;
+		const toRest = toParsed.pathname + toParsed.search + toParsed.hash;
+		if (fromRest === toRest) {
+			// Same path, different origin: simple domain swap
+			return {
+				includePattern: `${fromParsed.origin}/*`,
+				redirectUrl: `${toParsed.origin}/$1`,
+				patternType: "W",
+				description
+			};
+		}
+	}
+
+	// Character-level suffix matching for partial path rewrites
+	let suffixLen = 0;
+	const maxSuffix = Math.min(fromUrl.length, toUrl.length) - 1;
+	while (
+		suffixLen < maxSuffix &&
+		fromUrl[fromUrl.length - 1 - suffixLen] === toUrl[toUrl.length - 1 - suffixLen]
+	) {
+		suffixLen++;
+	}
+
+	if (suffixLen === 0) {
+		return { includePattern: fromUrl, redirectUrl: toUrl, patternType: "W", description };
+	}
+
+	let fromBase = fromUrl.substring(0, fromUrl.length - suffixLen);
+	let toBase = toUrl.substring(0, toUrl.length - suffixLen);
+	const suffix = fromUrl.substring(fromUrl.length - suffixLen);
+
+	// Avoid splitting in the middle of '://'
+	if ((/:\/*$/).test(fromBase) || (/:\/*$/).test(toBase)) {
+		return { includePattern: fromUrl, redirectUrl: toUrl, patternType: "W", description };
+	}
+
+	// If suffix starts with '/', include it as separator so '*' captures after it
+	if (suffix.startsWith("/")) {
+		fromBase += "/";
+		toBase += "/";
+	}
+
+	return {
+		includePattern: `${fromBase}*`,
+		redirectUrl: `${toBase}$1`,
+		patternType: "W",
+		description
+	};
+};
+
+const generateFromHelper = () => {
+	const fromUrl = el("#helper-from-url").value.trim();
+	const toUrl = el("#helper-to-url").value.trim();
+	if (!fromUrl || !toUrl) return;
+
+	const result = generateRuleFromUrls(fromUrl, toUrl);
+	if (!result) return;
+
+	el("input[data-bind=\"includePattern\"]").value = result.includePattern;
+	el("input[data-bind=\"redirectUrl\"]").value = result.redirectUrl;
+	el(`input[data-bind="patternType"][value="${result.patternType}"]`).checked = true;
+
+	if (!el("input[data-bind=\"description\"]").value && result.description) {
+		el("input[data-bind=\"description\"]").value = result.description;
+	}
+	if (!el("input[data-bind=\"exampleUrl\"]").value) {
+		el("input[data-bind=\"exampleUrl\"]").value = fromUrl;
+	}
+
+	editFormChange();
 };
 
 const toggleReplaceProcessForm = (currentProcess, forceHide) => {
@@ -157,6 +274,9 @@ const setupEditAndDeleteEventListeners = () => {
 	el("#cancel-delete").addEventListener("click", cancelDelete);
 
 	el("#advanced-toggle button").addEventListener("click", toggleAdvancedOptions);
+
+	el("#helper-toggle button").addEventListener("click", toggleHelperPanel);
+	el("#helper-generate").addEventListener("click", generateFromHelper);
 
 	el("#create-new-redirect").addEventListener("click", createNewRedirect);
 	// Listen to any change from the edit form...

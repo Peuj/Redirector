@@ -37,6 +37,12 @@
   --red-btn:         var(--red);
   --red-btn-hover:   var(--red-deep);
 
+  /* Brand heading */
+  --ls-brand: 4px;
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 3px rgb(0 95 184 / 0.14);
+
   /* Shape */
   --r-xs:  3px;
   --r-sm:  5px;
@@ -81,6 +87,7 @@
     --green-btn-hover: #155f39;
     --red-btn:         #c43636;
     --red-btn-hover:   #a02c2c;
+    --focus-ring: 0 0 0 3px rgb(96 165 250 / 0.2);
 
     /* Stronger elevation shadows on dark surfaces */
     --shadow-xs: 0 1px 3px rgb(0 0 0 / 0.35);

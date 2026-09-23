@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>Redirector</title>
 		<meta charset="UTF-8">
+		<title>Redirector</title>
 		<link rel="stylesheet" href="css/redirector.css" />
 		<link rel="stylesheet" href="fa/css/fontawesome.min.css" />
 		<link rel="stylesheet" href="fa/css/solid.min.css" />
 		<!-- ☈ -->
 		<link rel="icon" href="images/icon-light-theme-32.png">
-		<meta name="viewport" content="width=device-width">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 	</head>
 	<body>
 		<div id="cover">
@@ -18,23 +18,23 @@
 		<div id="delete-redirect-form" role="dialog" aria-modal="true" aria-labelledby="delete-redirect-heading">
 			<h3 id="delete-redirect-heading">Are you sure you want to delete this redirect?</h3>
 			<div>
-				<label>Description:</label>
+				<span class="field-key">Description:</span>
 				<span data-bind="description"></span>
 			</div>
 			<div>
-				<label>Example URL:</label>
+				<span class="field-key">Example URL:</span>
 				<span data-bind="exampleUrl"></span>
 			</div>
 			<div>
-				<label>Include pattern:</label>
+				<span class="field-key">Include pattern:</span>
 				<span data-bind="includePattern"></span>
 			</div>
 			<div>
-				<label>Redirect to:</label>
+				<span class="field-key">Redirect to:</span>
 				<span data-bind="redirectUrl"></span>
 			</div>
 			<div>
-				<label>Pattern type:</label>
+				<span class="field-key">Pattern type:</span>
 				<span data-bind="patternTypeText"></span>
 			</div>
 			<div class="button-container">
@@ -59,6 +59,27 @@
 		<!-- Form for creating and editing redirects -->
 		<div id="edit-redirect-form" role="dialog" aria-modal="true" aria-labelledby="edit-redirect-heading">
 			<h3 id="edit-redirect-heading">Create Redirect</h3>
+			<div id="helper-section">
+				<div id="helper-toggle">
+					<button class="btn-link" type="button">Fill from URL pair...</button>
+				</div>
+				<div id="helper-panel" class="hidden">
+					<p class="helper-hint">Enter a source and destination URL to auto-fill the pattern fields.</p>
+					<div class="form-grid">
+						<div>
+							<label>From URL:</label>
+							<div class="input-cell"><input type="text" id="helper-from-url" placeholder="https://old.example.com/path" autocomplete="off"></div>
+						</div>
+						<div>
+							<label>To URL:</label>
+							<div class="input-cell"><input type="text" id="helper-to-url" placeholder="https://new.example.com/path" autocomplete="off"></div>
+						</div>
+					</div>
+					<div id="helper-actions">
+						<button type="button" id="helper-generate" class="btn green small">Suggest rule</button>
+					</div>
+				</div>
+			</div>
 			<div class="form-grid">
 				<div>
 					<label>Description:</label>
@@ -171,10 +192,10 @@
 					<source srcset="images/icon-dark-theme-32.png" media="(prefers-color-scheme: dark)">
 					<img src="images/icon-light-theme-32.png" alt="">
 				</picture>Redirector</h1>
-			<h5>Go where you want</h5>
+			<p class="tagline">Go where you want</p>
 
 			<div id="menu">
-				<a id="create-new-redirect" class="btn blue large">New Redirect</a>
+				<button id="create-new-redirect" class="btn blue large">New Redirect</button>
 
 				<!-- Importing/Exporting of redirects -->
 				<span>
@@ -222,15 +243,15 @@
 								</div>
 							</div>
 							<div class="redirect-row-actions">
-								<button class="btn medium green" data-action="editRedirect" title="Edit this rule">Edit</button>
-								<button class="btn medium blue" data-action="toggleDisabled" title="Enable or disable this rule"><span data-show="disabled">Enable</span><span data-show="!disabled">Disable</span></button>
-								<button class="btn medium grey" data-action="duplicateRedirect" title="Duplicate this rule">Duplicate</button>
-								<button class="btn medium blue" data-action="exportSingleRedirect" title="Export this rule as JSON">Export</button>
-								<button class="btn medium red" data-action="confirmDeleteRedirect" title="Delete this rule">Delete</button>
-								<button class="btn medium grey move-uptop-btn" data-action="moveUpTop" data-disabled="$first" title="Move to top"><i class="fa-solid fa-angles-up"></i></button>
-								<button class="btn medium grey move-up-btn" data-action="moveUp" data-disabled="$first" title="Move up"><i class="fa-solid fa-chevron-up"></i></button>
-								<button class="btn medium grey move-down-btn" data-action="moveDown" data-disabled="$last" title="Move down"><i class="fa-solid fa-chevron-down"></i></button>
-								<button class="btn medium grey move-downbottom-btn" data-action="moveDownBottom" data-disabled="$last" title="Move to bottom"><i class="fa-solid fa-angles-down"></i></button>
+								<button class="btn green medium" data-action="editRedirect" aria-label="Edit this rule">Edit</button>
+								<button class="btn blue medium" data-action="toggleDisabled" aria-label="Enable or disable this rule"><span data-show="disabled">Enable</span><span data-show="!disabled">Disable</span></button>
+								<button class="btn grey medium" data-action="duplicateRedirect" aria-label="Duplicate this rule">Duplicate</button>
+								<button class="btn blue medium" data-action="exportSingleRedirect" aria-label="Export this rule as JSON">Export</button>
+								<button class="btn red medium" data-action="confirmDeleteRedirect" aria-label="Delete this rule">Delete</button>
+								<button class="btn grey medium move-uptop-btn" data-action="moveUpTop" data-disabled="$first" aria-label="Move to top"><i class="fa-solid fa-angles-up"></i></button>
+								<button class="btn grey medium move-up-btn" data-action="moveUp" data-disabled="$first" aria-label="Move up"><i class="fa-solid fa-chevron-up"></i></button>
+								<button class="btn grey medium move-down-btn" data-action="moveDown" data-disabled="$last" aria-label="Move down"><i class="fa-solid fa-chevron-down"></i></button>
+								<button class="btn grey medium move-downbottom-btn" data-action="moveDownBottom" data-disabled="$last" aria-label="Move to bottom"><i class="fa-solid fa-angles-down"></i></button>
 							</div>
 							<label class="toggle-container" title="Select for bulk operations">
 								<input class="checkbox" type="checkbox">
@@ -245,7 +266,7 @@
 				<h4>Custom Variables</h4>
 				<p>Use <strong>[varName]</strong> in redirect URLs. Keys may only contain letters, digits, and underscores.</p>
 				<div id="variables-list"></div>
-				<button id="add-variable-btn" class="btn small grey">+ Add variable</button>
+				<button id="add-variable-btn" class="btn grey small">+ Add variable</button>
 			</div>
 
 			<footer>
