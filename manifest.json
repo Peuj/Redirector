@@ -26,6 +26,14 @@
     "http://*/*",
     "https://*/*"
   ],
+  "commands": {
+    "toggle-redirector": {
+      "suggested_key": {
+        "default": "Alt+Shift+R"
+      },
+      "description": "Toggle Redirector on/off"
+    }
+  },
   "browser_specific_settings": {
     "gecko": {
       "id": "redirector@einaregilsson.com"

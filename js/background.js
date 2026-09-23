@@ -171,6 +171,14 @@ const monitorChanges = (changes) => {
 };
 chrome.storage.onChanged.addListener(monitorChanges);
 
+chrome.commands.onCommand.addListener((command) => {
+	if (command === "toggle-redirector") {
+		chrome.storage.local.get({ disabled: false }, (obj) => {
+			chrome.storage.local.set({ disabled: !obj.disabled });
+		});
+	}
+});
+
 // Creates a filter to pass to the listener so we don't have to run through
 // all the redirects for all the request types we don't have any redirects for anyway.
 const createFilter = (redirects) => {
