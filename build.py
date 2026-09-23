@@ -58,10 +58,6 @@ def create_addon(files, browser):
 					manifest['background'] = {'service_worker': 'js/background.js'}
 					manifest['permissions'].append('declarativeNetRequest')
 
-				if browser in ('chrome', 'edge', 'opera'):
-					# These browsers open options in a new tab; the popup layout looks wrong there
-					manifest['options_ui']['page'] = 'redirector.html'
-
 				zf.writestr(f[2:], json.dumps(manifest, indent=2))
 			else:
 				zf.write(f, f[2:])

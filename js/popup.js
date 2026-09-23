@@ -1,6 +1,7 @@
 
 
 const storage = chrome.storage.local;
+const notifArea = chrome.storage.session || chrome.storage.local;
 let viewModel = {}; // Just an object for the databinding
 
 const applyBinding = () => {
@@ -8,8 +9,9 @@ const applyBinding = () => {
 };
 
 const toggle = (prop) => {
-	storage.get({ [prop]: false }, (obj) => {
-		storage.set({ [prop]: !obj[prop] });
+	const area = (prop === "enableNotifications") ? notifArea : storage;
+	area.get({ [prop]: false }, (obj) => {
+		area.set({ [prop]: !obj[prop] });
 		viewModel[prop] = !obj[prop];
 		applyBinding();
 	});
@@ -21,19 +23,14 @@ const openRedirectorSettings = () => {
 	// switch to open one if we have it to minimize conflicts
 	const url = chrome.runtime.getURL("redirector.html");
 
-	// FIREFOXBUG: Firefox chokes on url:url filter if the url is a moz-extension:// url
-	// so we don't use that, do it the more manual way instead.
-	// Search ALL windows, not just the current one, to enforce a single settings tab.
-	chrome.tabs.query({}, (tabs) => {
-		for (let i = 0; i < tabs.length; i++) {
-			if (tabs[i].url == url) {
-				chrome.tabs.update(tabs[i].id, { active: true });
-				if (tabs[i].windowId) {
-					chrome.windows.update(tabs[i].windowId, { focused: true });
-				}
-				close();
-				return;
+	chrome.tabs.query({ url }, (tabs) => {
+		if (tabs.length > 0) {
+			chrome.tabs.update(tabs[0].id, { active: true });
+			if (tabs[0].windowId) {
+				chrome.windows.update(tabs[0].windowId, { focused: true });
 			}
+			close();
+			return;
 		}
 
 		chrome.tabs.create({ url, active: true });
@@ -43,9 +40,11 @@ const openRedirectorSettings = () => {
 
 
 const pageLoad = () => {
-	storage.get({ logging: false, enableNotifications: false, disabled: false, enablePost: false }, (obj) => {
-		viewModel = obj;
-		applyBinding();
+	storage.get({ logging: false, disabled: false, enablePost: false }, (obj) => {
+		notifArea.get({ enableNotifications: false }, (notifObj) => {
+			viewModel = { ...obj, ...notifObj };
+			applyBinding();
+		});
 	});
 
 	el("#enable-notifications").addEventListener("input", () => toggle("enableNotifications"));
