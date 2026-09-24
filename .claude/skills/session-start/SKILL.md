@@ -23,6 +23,8 @@ allowed-tools: Read Bash(git *)
 
 **Never force-push.**
 
+**Never merge master into feature branch:** Always cherry-pick instead. `git merge master` creates merge commits that can silently take master's manifest.json (without test scripts) and contaminates cherry-picks back to master.
+
 **rlog/master invariant:** Master must never contain:
 - `rlog(` calls in any JS file
 - `js/redirectorLog.js` file

@@ -38,7 +38,7 @@ Load task-relevant context based on keywords in $ARGUMENTS:
 | release / version / build | `/pre-release` or `/build` |
 | background.js / SPA / history | Architecture: `background.js` has two anti-loop structures (ignoreNextRequest, justRedirected) and `onHistoryStateUpdated` for SPAs |
 | redirect.js / pattern / wildcard / regex | Architecture: `Redirect` class in `redirect.js`; `processMatches` transforms; capture group substitution |
-| UI / settings / redirector.html | Architecture: custom data binding via `dataBind()` in `util.js`; no framework |
+| UI / settings / redirector.html | Load `/ui-audit` for a full checklist; architecture: custom data binding via `dataBind()` in `util.js`; no framework |
 | storage / sync | Architecture: `storageArea` switches between local and sync; 8 KB limit for sync |
 | appliesTo / filter / type | Architecture: `createPartitionedRedirects` buckets rules by request type; `createFilter` excludes non-ResourceType values like "history" |
 

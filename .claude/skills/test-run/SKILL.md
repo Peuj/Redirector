@@ -42,7 +42,7 @@ Current counts:
 - Integration tests (Q-U): 11 tests. Firefox only (marked `browsers: "firefox"`).
 - Total: 96 tests.
 
-The popup count is authoritative -- if the count in this skill diverges from what the UI shows, trust the UI and update this skill.
+The popup count is authoritative -- if the count in this skill diverges from what the UI shows, trust the UI and update this skill. Note: the per-section unit test counts (A-P) sum to 84; there is one unlocated test -- verify the exact section when the companion runs next.
 
 ### Step 5 -- Interpret results
 
@@ -115,6 +115,8 @@ When all rules have `appliesTo: ["history"]` only, `createFilter` returns `types
 | M | 9 | README documented examples |
 | N | 5 | URL pair helper |
 | P | 7 | updateExampleResult |
-| Q-S | 5 | Firefox: live redirects, disabled, anti-loop |
+| Q | 3 | Firefox: live wildcard redirect, exclude blocks, sub-frame |
+| R | 3 | Firefox: disabled per-rule, global disable, re-enable |
+| S | 3 | Firefox: ignoreNextRequest, allowLoops chaining, justRedirected 3x block |
 | T | 1 | Firefox: appliesTo type filtering |
 | U | 1 | Firefox: SPA pushState redirect |

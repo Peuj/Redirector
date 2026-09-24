@@ -5,10 +5,10 @@ allowed-tools: Read Write Edit Bash(git *) Bash(grep *) Bash(npm *)
 
 ## Lint prerequisite
 
-Before cherry-picking, verify lint passes on the feature branch:
+Before cherry-picking, verify all linters pass on the feature branch:
 
 ```
-npm run lint   # must report 0 errors, 0 warnings
+npm run lint:all   # must report 0 errors, 0 warnings (ESLint + Stylelint + HTMLHint)
 ```
 
 Do not cherry-pick if lint fails. Fix it on the feature branch first.
@@ -84,7 +84,7 @@ All must be clean before reporting done.
 
 ### Step 5 -- Remind
 
-"Cherry-picks complete. Run the redirector-test companion against master? (Note: testHooks are feature-branch-only, so integration tests Q-U won't run. Unit tests A-P still work if the test extension points at the correct extension ID.)"
+"Cherry-picks complete. Note: testHooks.js is feature-branch-only, so ALL companion ops fail against master (the `onMessageExternal` handlers that handle `run-redirect-op` and all other ops live in testHooks.js). Run the test suite on the feature branch only."
 
 ## Stripping rlog from a commit manually
 
