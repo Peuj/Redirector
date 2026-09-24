@@ -15,10 +15,10 @@ Read every CSS and HTML file in full before writing any findings. Goal: a fully 
 
 | File | CSS | Purpose |
 |---|---|---|
-| `redirector.html` | `css/redirector.css` | Main settings page |
-| `popup.html` | `css/popup.css` | Browser toolbar popup |
-| `help.html` | `css/help.css` | Help/documentation page |
-| `icon.html` | inline | Icon generator (dev utility) |
+| `ui/redirector.html` | `css/redirector.css` | Main settings page |
+| `ui/popup.html` | `css/popup.css` | Browser toolbar popup |
+| `ui/help.html` | `css/help.css` | Help/documentation page |
+| `ui/icon.html` | inline | Icon generator (dev utility) |
 | `promo/tiles.html` | inline | Web store tiles (dev utility) |
 
 All CSS files import `css/tokens.css` which holds every design token (colors, radii, shadows, typography, spacing).
@@ -36,9 +36,9 @@ All CSS files import `css/tokens.css` which holds every design token (colors, ra
 Read all CSS/HTML files completely before forming any finding:
 
 1. `css/tokens.css`
-2. `css/redirector.css` + `redirector.html`
-3. `css/popup.css` + `popup.html`
-4. `css/help.css` + `help.html`
+2. `css/redirector.css` + `ui/redirector.html`
+3. `css/popup.css` + `ui/popup.html`
+4. `css/help.css` + `ui/help.html`
 
 ---
 
@@ -52,7 +52,7 @@ Work through every category. For each issue found, note the file, line, current 
 - [ ] **Font size scale** -- sizes form a coherent scale (e.g., 12/13/14/15/17/22/28)? Any arbitrary one-off values?
 - [ ] **Body font size** -- comfortably readable (14-15px minimum)?
 - [ ] **Heading hierarchy** -- `h1->h2->h3` sequence reflects both visual and semantic structure. No skipped levels. No heading used purely for visual sizing.
-- [ ] **Line height** -- body text has at least `line-height: 1.5`. Long-form text (help.html) ideally 1.6.
+- [ ] **Line height** -- body text has at least `line-height: 1.5`. Long-form text (`ui/help.html`) ideally 1.6.
 - [ ] **Letter spacing** -- only on headings or all-caps labels; never on body text.
 - [ ] **Text transform** -- uppercase labels have `letter-spacing` to compensate for reduced legibility.
 - [ ] **Font weight** -- limited to 2-3 weights (400, 500/600, 700). No arbitrary weights.
@@ -69,7 +69,7 @@ Work through every category. For each issue found, note the file, line, current 
 ### Spacing and layout
 
 - [ ] **Spacing scale** -- values are multiples of 4px or 8px. Flag arbitrary values (`7px`, `13px`, `17px`).
-- [ ] **Dialog padding** -- all three dialogs in `redirector.html` (`#edit-redirect-form`, `#delete-redirect-form`, `#delete-all-form`) have the same internal padding.
+- [ ] **Dialog padding** -- all three dialogs in `ui/redirector.html` (`#edit-redirect-form`, `#delete-redirect-form`, `#delete-all-form`) have the same internal padding.
 - [ ] **Button padding** -- all buttons of the same size class (`.btn.small`, `.btn.medium`, `.btn.large`) have identical padding across all pages.
 - [ ] **Form grid alignment** -- label column width is consistent throughout the edit form.
 

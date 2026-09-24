@@ -111,7 +111,7 @@ When all rules have `appliesTo: ["history"]` only, `createFilter` returns `types
 | I | 4 | Custom variables (incl. $ in value) |
 | J | 5 | validateRegexSafety + isValidRegex |
 | K | 4 | equals/toObject (incl. allowLoops) |
-| L | 8 | help.html documented examples |
+| L | 8 | ui/help.html documented examples |
 | M | 9 | README documented examples |
 | N | 5 | URL pair helper |
 | P | 7 | updateExampleResult |

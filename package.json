@@ -8,7 +8,7 @@
         "lint:fix": "eslint . --fix",
         "lint:css": "stylelint \"css/*.css\"",
         "lint:css:fix": "stylelint \"css/*.css\" --fix",
-        "lint:html": "htmlhint \"popup.html\" \"redirector.html\" \"help.html\"",
+        "lint:html": "htmlhint \"ui/popup.html\" \"ui/redirector.html\" \"ui/help.html\"",
         "lint:all": "npm run lint && npm run lint:css && npm run lint:html"
     },
     "devDependencies": {

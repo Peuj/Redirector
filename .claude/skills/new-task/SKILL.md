@@ -36,9 +36,9 @@ Load task-relevant context based on keywords in $ARGUMENTS:
 | test / companion | `/test-run` |
 | cherry-pick / master / rlog | `/feature-to-master` |
 | release / version / build | `/pre-release` or `/build` |
-| background.js / SPA / history | Architecture: `background.js` has two anti-loop structures (ignoreNextRequest, justRedirected) and `onHistoryStateUpdated` for SPAs |
-| redirect.js / pattern / wildcard / regex | Architecture: `Redirect` class in `redirect.js`; `processMatches` transforms; capture group substitution |
-| UI / settings / redirector.html | Load `/ui-audit` for a full checklist; architecture: custom data binding via `dataBind()` in `util.js`; no framework |
+| background.js / SPA / history | Architecture: `background.js` has two anti-loop structures (ignoreNextRequest, justRedirected) and `onHistoryStateUpdated` for SPAs. **Chrome MV3 trap**: `setInterval` stops firing after the service worker suspends -- use `chrome.alarms` instead. **theme_icons trap**: `theme_icons` in the manifest already handles dark/light toolbar icon switching; never add manual `setIcon`/`matchMedia` code. **DNR transform trap**: `declarativeNetRequest` cannot apply URL transforms -- rules with `processMatches !== "noProcessing"` are silently skipped on Chrome/Edge/Opera (Firefox webRequest handles them fine). Always guard `alarms.create` with `alarms.get` first to avoid creating duplicates across SW restarts. |
+| redirect.js / pattern / wildcard / regex | Architecture: `Redirect` class in `redirect.js`; `processMatches` transforms; capture group substitution. **Double-transform trap**: if `redirectUrl` uses `$1` more than once and `processMatches` is active, a naive implementation applies the transform once per reference instead of once per capture group. Fix: pre-compute `transformed = Array.from(matches, m => _applyTransform(m))` before the `$n` substitution loop. |
+| UI / settings / redirector.html | Load `/ui-audit` for a full checklist; architecture: custom data binding via `dataBind()` in `util.js`; no framework; HTML files live in `ui/` |
 | storage / sync | Architecture: `storageArea` switches between local and sync; 8 KB limit for sync |
 | appliesTo / filter / type | Architecture: `createPartitionedRedirects` buckets rules by request type; `createFilter` excludes non-ResourceType values like "history" |
 

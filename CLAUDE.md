@@ -44,7 +44,7 @@ Two scripts load in order per `manifest.json`: `js/redirect.js` then `js/backgro
 - **`js/redirect.js`** — The `Redirect` class. Handles pattern compilation (wildcard `W` vs regex `R`), URL matching, capture-group substitution (`$1`, `$2`, ...), and `processMatches` transforms (`urlEncode`, `urlDecode`, `base64decode`, etc.).
 - **`js/background.js`** — Registers `chrome.webRequest.onBeforeRequest` (blocking) and `chrome.webNavigation.onHistoryStateUpdated` (for SPAs like YouTube/Twitter). Maintains two anti-loop structures: `ignoreNextRequest` (URL → timestamp, prevents redirect target from being re-redirected) and `justRedirected` (stops loops when a URL is redirected 3+ times within 3 seconds). Listens for storage changes to rebuild partitioned rule sets.
 
-### Settings page (`redirector.html`)
+### Settings page (`ui/redirector.html`)
 Loads JS in this order: `stub.js` → `util.js` → `redirect.js` → `redirectorpage.js` → `editredirect.js` → `importexport.js`.
 
 ### Custom data binding (`js/util.js`)
@@ -61,7 +61,7 @@ No external framework. `dataBind(el, dataObject)` reads HTML attributes:
 - Keys: `redirects` (array), `disabled`, `logging`, `enableNotifications`, `isSyncEnabled`
 
 ### Local development
-`js/stub.js` stubs the Chrome extension API so `redirector.html` can be opened directly via a local file server without loading the extension. This is the intended way to develop the settings UI without installing the extension.
+`js/stub.js` stubs the Chrome extension API so `ui/redirector.html` can be opened directly via a local file server without loading the extension. This is the intended way to develop the settings UI without installing the extension.
 
 ## Core Data Shape
 

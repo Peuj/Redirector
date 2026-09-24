@@ -47,7 +47,7 @@
     ]
   },
   "options_ui": {
-    "page": "redirector.html",
+    "page": "ui/redirector.html",
     "open_in_tab": true
   },
   "action": {
@@ -61,7 +61,7 @@
       "128": "images/icon-light-theme-128.png"
     },
     "default_title": "Redirector",
-    "default_popup": "popup.html",
+    "default_popup": "ui/popup.html",
     "theme_icons": [
       {
         "dark": "images/icon-light-theme-16.png",

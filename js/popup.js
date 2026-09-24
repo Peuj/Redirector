@@ -21,7 +21,7 @@ const toggle = (prop) => {
 const openRedirectorSettings = () => {
 
 	// switch to open one if we have it to minimize conflicts
-	const url = chrome.runtime.getURL("redirector.html");
+	const url = chrome.runtime.getURL("ui/redirector.html");
 
 	chrome.tabs.query({ url }, (tabs) => {
 		if (tabs.length > 0) {
