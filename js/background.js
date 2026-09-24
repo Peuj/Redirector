@@ -266,7 +266,9 @@ const setUpRedirectListener = () => {
 		if (isFirefox) {
 			const filter = createFilter(redirects);
 			log(`Setting filter for listener: ${JSON.stringify(filter)}`);
-			chrome.webRequest.onBeforeRequest.addListener(checkRedirects, filter, ["blocking"]);
+			if (filter.types.length > 0) {
+				chrome.webRequest.onBeforeRequest.addListener(checkRedirects, filter, ["blocking"]);
+			}
 		} else {
 			updateDNRRules(redirects);
 		}
