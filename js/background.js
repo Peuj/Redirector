@@ -261,27 +261,35 @@ const setUpRedirectListener = () => {
 			return;
 		}
 
-		partitionedRedirects = createPartitionedRedirects(redirects);
-
-		if (isFirefox) {
-			const filter = createFilter(redirects);
-			log(`Setting filter for listener: ${JSON.stringify(filter)}`);
-			if (filter.types.length > 0) {
-				chrome.webRequest.onBeforeRequest.addListener(checkRedirects, filter, ["blocking"]);
+		chrome.storage.local.get({ disabled: false }, ({ disabled }) => {
+			if (disabled) {
+				log("Redirector is disabled, not registering listeners");
+				if (!isFirefox) updateDNRRules([]);
+				return;
 			}
-		} else {
-			updateDNRRules(redirects);
-		}
 
-		if (partitionedRedirects.history) {
-			log("Adding HistoryState Listener");
-			const historyFilter = { url: [] };
-			for (const r of partitionedRedirects.history) {
-				const urlPattern = r._preparePattern(r.includePattern);
-				if (urlPattern) historyFilter.url.push({ urlMatches: urlPattern });
+			partitionedRedirects = createPartitionedRedirects(redirects);
+
+			if (isFirefox) {
+				const filter = createFilter(redirects);
+				log(`Setting filter for listener: ${JSON.stringify(filter)}`);
+				if (filter.types.length > 0) {
+					chrome.webRequest.onBeforeRequest.addListener(checkRedirects, filter, ["blocking"]);
+				}
+			} else {
+				updateDNRRules(redirects);
 			}
-			chrome.webNavigation.onHistoryStateUpdated.addListener(checkHistoryStateRedirects, historyFilter);
-		}
+
+			if (partitionedRedirects.history) {
+				log("Adding HistoryState Listener");
+				const historyFilter = { url: [] };
+				for (const r of partitionedRedirects.history) {
+					const urlPattern = r._preparePattern(r.includePattern);
+					if (urlPattern) historyFilter.url.push({ urlMatches: urlPattern });
+				}
+				chrome.webNavigation.onHistoryStateUpdated.addListener(checkHistoryStateRedirects, historyFilter);
+			}
+		});
 	});
 };
 

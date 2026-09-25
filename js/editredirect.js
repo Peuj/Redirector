@@ -2,6 +2,11 @@
 
 let activeRedirect = null;
 
+const updateChromiumTransformWarning = (redirect) => {
+	const isChromium = !navigator.userAgent.match(/Firefox/i);
+	el("#chromium-transform-warning").classList.toggle("hidden", !(isChromium && redirect.processMatches !== "noProcessing"));
+};
+
 const createNewRedirect = () => {
 	activeRedirect = new Redirect();
 	el("#edit-redirect-form h3").textContent = "Create Redirect";
@@ -21,6 +26,7 @@ const editRedirect = (index) => {
 	collapseHelperPanel();
 	toggleReplaceProcessForm(activeRedirect.processMatches);
 	showForm("#edit-redirect-form", activeRedirect);
+	updateChromiumTransformWarning(activeRedirect);
 	setTimeout(() => el("input[data-bind=\"description\"]").focus(), 200); // Why not working...?
 };
 
@@ -228,10 +234,7 @@ const editFormChange = () => {
 	activeRedirect.replacePattern = activeRedirect.replaceFrom;
 
 	toggleReplaceProcessForm(activeRedirect.processMatches);
-
-	const isChromium = !navigator.userAgent.match(/Firefox/i);
-	const transformActive = activeRedirect.processMatches !== "noProcessing";
-	el("#chromium-transform-warning").classList.toggle("hidden", !(isChromium && transformActive));
+	updateChromiumTransformWarning(activeRedirect);
 
 	activeRedirect.updateExampleResult();
 

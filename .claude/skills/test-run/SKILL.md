@@ -39,14 +39,16 @@ Click the redirector-test toolbar icon to open `test-runner.html`. Click "Run Al
 
 Current counts:
 - Unit tests (A-P): 85 tests. All run on both Firefox and Chrome.
-- Integration tests (Q-U): 11 tests. Firefox only (marked `browsers: "firefox"`).
-- Total: 96 tests.
+- Integration tests (Q-U): 11 tests. Q1, Q3, S1-S3 are Firefox only; Q2, R1-R3, T1, U1 run on both.
+- Integration tests (V): 6 tests. Chrome only (marked `browsers: "chrome"`).
+- Total: 102 tests.
 
 The popup count is authoritative -- if the count in this skill diverges from what the UI shows, trust the UI and update this skill. Note: the per-section unit test counts (A-P) sum to 84; there is one unlocated test -- verify the exact section when the companion runs next.
 
 ### Step 5 -- Interpret results
 
-All 96 tests should pass on Firefox. On Chrome, integration tests Q-U are skipped (not failed).
+Firefox: all 99 tests should pass (V section skipped).
+Chrome: Q1, Q3, S1-S3 are skipped; Q2, R1-R3, T1, U1, V1-V6 run and should pass.
 
 A `[FAIL]` in a unit test (A-P) indicates a regression in `redirect.js` logic -- investigate `run-redirect-op` bridge and the specific op.
 
@@ -115,8 +117,9 @@ When all rules have `appliesTo: ["history"]` only, `createFilter` returns `types
 | M | 9 | README documented examples |
 | N | 5 | URL pair helper |
 | P | 7 | updateExampleResult |
-| Q | 3 | Firefox: live wildcard redirect, exclude blocks, sub-frame |
-| R | 3 | Firefox: disabled per-rule, global disable, re-enable |
+| Q | 3 | Q1 Firefox: basic $1 capture; Q2 both: exact URL; Q3 Firefox: exclude pattern |
+| R | 3 | Both: disabled per-rule, global disable, re-enable |
 | S | 3 | Firefox: ignoreNextRequest, allowLoops chaining, justRedirected 3x block |
-| T | 1 | Firefox: appliesTo type filtering |
-| U | 1 | Firefox: SPA pushState redirect |
+| T | 1 | Both: appliesTo type filtering |
+| U | 1 | Both: SPA pushState redirect |
+| V | 6 | Chrome: transforms skipped (urlEncode, all 6 types), plain wildcard fires, regex type fires, exclude pattern ignored (limitation) |

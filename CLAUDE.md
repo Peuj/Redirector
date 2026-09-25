@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-**Redirector** is a browser extension (Firefox, Chrome, Edge, Opera) that automatically redirects URLs based on user-defined regex or wildcard rules. It is a **vanilla JS, no-framework, Manifest V2** extension. No TypeScript, no bundler, no test suite.
+**Redirector** is a browser extension (Firefox, Chrome, Edge, Opera) that automatically redirects URLs based on user-defined regex or wildcard rules. It is a **vanilla JS, no-framework, Manifest V3** extension. No TypeScript, no bundler, no test suite.
 
 ## Linting
 
@@ -38,11 +38,16 @@ bash nex-build.sh
 
 ## Architecture
 
-### Background (persistent page)
-Two scripts load in order per `manifest.json`: `js/redirect.js` then `js/background.js`.
+### Background (service worker on Chrome, event page on Firefox)
+
+On Firefox, `manifest.json` loads scripts in order: `js/redirect.js`, `js/redirectorLog.js`, `js/background.js`, `js/testHooks.js`. On Chrome/Edge/Opera (`manifest-c.json`), `background.js` is a service worker and uses `importScripts` to load them at runtime.
 
 - **`js/redirect.js`** — The `Redirect` class. Handles pattern compilation (wildcard `W` vs regex `R`), URL matching, capture-group substitution (`$1`, `$2`, ...), and `processMatches` transforms (`urlEncode`, `urlDecode`, `base64decode`, etc.).
-- **`js/background.js`** — Registers `chrome.webRequest.onBeforeRequest` (blocking) and `chrome.webNavigation.onHistoryStateUpdated` (for SPAs like YouTube/Twitter). Maintains two anti-loop structures: `ignoreNextRequest` (URL → timestamp, prevents redirect target from being re-redirected) and `justRedirected` (stops loops when a URL is redirected 3+ times within 3 seconds). Listens for storage changes to rebuild partitioned rule sets.
+- **`js/background.js`** — Dual-mode redirect engine:
+  - **Firefox**: registers `chrome.webRequest.onBeforeRequest` (blocking) to intercept and redirect requests in JS. All features including `processMatches` transforms work.
+  - **Chrome/Edge/Opera**: uses `chrome.declarativeNetRequest` (DNR) to register redirect rules with the browser natively. DNR only supports regex substitution (`\\$1`), so rules with any `processMatches` transform (`urlEncode`, `urlDecode`, `base64Decode`, `replace`, etc.) are **silently skipped** and never fire on Chromium browsers. When another extension also uses DNR to redirect the same URL, the most recently installed extension wins.
+  - Both paths register `chrome.webNavigation.onHistoryStateUpdated` for SPA history redirects (e.g. YouTube, Twitter).
+  - Maintains `ignoreNextRequest` (URL → timestamp) and `justRedirected` (loop detector: 3+ redirects within 3 s).
 
 ### Settings page (`ui/redirector.html`)
 Loads JS in this order: `stub.js` → `util.js` → `redirect.js` → `redirectorpage.js` → `editredirect.js` → `importexport.js`.

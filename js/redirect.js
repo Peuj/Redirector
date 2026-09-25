@@ -253,6 +253,10 @@ class Redirect {
 		return this.appliesTo.map(type => Redirect.requestTypes[type] || type).join(", ");
 	}
 
+	get hasTransform() {
+		return this.processMatches !== "noProcessing";
+	}
+
 	get processMatchesExampleText() {
 		const examples = {
 			noProcessing: "Use matches as they are",

@@ -417,6 +417,19 @@ span.disabled {
   color: var(--text-faint);
 }
 
+.redirect-info > .chromium-transform-row {
+  display: none;
+}
+
+body.is-chromium .redirect-info > .chromium-transform-row {
+  display: contents;
+}
+
+.chromium-transform-badge {
+  color: var(--color-error, #c0392b);
+  font-size: 12px;
+}
+
 .arrow {
   font-size: 14px;
   color: var(--text-muted);

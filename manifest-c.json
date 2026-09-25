@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "Redirector",
+  "description": "Automatically redirect content based on user-defined rules.",
+  "version": "3.5.4",
+  "icons": {
+    "16": "images/icon-light-theme-16.png",
+    "19": "images/icon-light-theme-19.png",
+    "32": "images/icon-light-theme-32.png",
+    "38": "images/icon-light-theme-38.png",
+    "48": "images/icon-light-theme-48.png",
+    "64": "images/icon-light-theme-64.png",
+    "128": "images/icon-light-theme-128.png"
+  },
+  "permissions": [
+    "webRequest",
+    "webNavigation",
+    "storage",
+    "tabs",
+    "notifications",
+    "contextMenus",
+    "scripting",
+    "alarms",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "commands": {
+    "toggle-redirector": {
+      "suggested_key": {
+        "default": "Alt+Shift+R"
+      },
+      "description": "Toggle Redirector on/off"
+    }
+  },
+  "externally_connectable": {
+    "_comment": "DEV ONLY — allows redirector-test companion extension to send messages",
+    "ids": ["*"]
+  },
+  "background": {
+    "service_worker": "js/background.js"
+  },
+  "options_ui": {
+    "page": "ui/redirector.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_icon": {
+      "16": "images/icon-light-theme-16.png",
+      "32": "images/icon-light-theme-32.png",
+      "48": "images/icon-light-theme-48.png",
+      "128": "images/icon-light-theme-128.png"
+    },
+    "default_title": "Redirector",
+    "default_popup": "ui/popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["js/redirect.js", "js/util.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
