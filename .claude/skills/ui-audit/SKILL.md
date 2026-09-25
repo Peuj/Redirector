@@ -109,10 +109,10 @@ Work through every category. For each issue found, note the file, line, current 
 - [ ] **No deprecated `<a name="...">`** -- replace with `id` on the nearest meaningful element.
 - [ ] **No `<p>` containing block elements** -- `<p>` must not wrap `<div>`, `<ul>`, `<ol>`, `<table>`.
 - [ ] **Aria labels on icon-only buttons** -- buttons with no visible text (icon-only move buttons) use `aria-label`, not `title`.
-- [ ] **`<meta charset>` position** -- first child of `<head>`, before `<title>`.
+- [ ] **`data-show` + `class="hidden"` conflict** -- grep for `data-show=.*class="hidden"` in all HTML files. Any match is a bug: the element can never be shown by `dataBind`. Replace `class="hidden"` with `style="display:none"` on those elements.
 - [ ] **`lang` attribute** -- every `<html>` has `lang="en"`.
 - [ ] **`<meta name="viewport">`** -- includes `initial-scale=1`.
-- [ ] **Inline styles** -- `style="display: none"` and similar replaced with `.hidden` utility class.
+- [ ] **Inline styles** -- `style="display: none"` and similar replaced with `.hidden` utility class. **Exception:** elements that are shown/hidden by `dataBind` via `data-show` MUST use `style="display:none"` as the initial hidden state, NOT `class="hidden"`. `dataBind` shows elements by setting `tag.style.display = ""` (clearing the inline property); a CSS class `display:none` has higher specificity than an empty inline style and cannot be overridden this way. Any `data-show` element with `class="hidden"` will be permanently invisible after `dataBind` tries to show it.
 
 ### Dead and duplicate CSS
 
