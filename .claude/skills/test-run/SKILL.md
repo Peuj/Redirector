@@ -96,6 +96,17 @@ Firefox extension pages do not expose `chrome.scripting`. The U1 integration tes
 
 When all rules have `appliesTo: ["history"]` only, `createFilter` returns `types: []`. Firefox's `addListener` threw on an empty types array, silently aborting the callback before `onHistoryStateUpdated` was registered. Guard added: `if (filter.types.length > 0)` in `setUpRedirectListener`.
 
+### Chrome integration test rules
+
+**Always use HTTPS URLs.** Chrome auto-upgrades `http://` to `https://` (HSTS / auto-upgrade) before DNR fires. A DNR rule with an `http://` filter never matches the upgraded request, and `waitForTabStaysAt("http://...")` fails because the tab actually lands at `https://...`. Use HTTPS in all tests marked `browsers: "both"` or `browsers: "chrome"`. Firefox-only tests (Q1, Q3, S1-S3) are exempt.
+
+**`browsers` field:** Each test definition accepts an optional `browsers` string:
+- `"both"` (default when omitted): runs on Firefox and Chrome
+- `"firefox"`: skipped on Chrome with `[SKIP]`
+- `"chrome"`: skipped on Firefox with `[SKIP]`
+
+**getDNRRules helper:** `getDNRRules()` in `redirector-bridge.js` sends `get-dnr-rules` to Redirector's testHooks and returns the array from `chrome.declarativeNetRequest.getDynamicRules()`. Use it to assert which rules DNR actually registered (plain rules present, transform rules absent). Returns `[]` on Firefox (no DNR).
+
 ---
 
 ## Test sections reference

@@ -65,6 +65,8 @@ For each:
 3. If conflicts in rlog lines only: abort (`git cherry-pick --abort`) and apply manually with Edit tool, stripping all `rlog(` lines and any lines that only exist to support them (e.g., variables only referenced by rlog calls).
 4. If conflicts in functional code: show conflict and ask user to resolve.
 
+**testHooks.js conflict:** Any commit that touches `js/testHooks.js` will produce a "deleted by us" conflict on master (master never carries that file). Always resolve with `git rm js/testHooks.js` -- it is test-only infrastructure and must stay deleted on master.
+
 After each cherry-pick: run `grep -n "rlog(" js/background.js` on master to confirm no leak.
 
 ### Step 4 -- Final verification
