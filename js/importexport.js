@@ -1,4 +1,5 @@
 // Shows a message explaining how many redirects were imported.
+/* global REDIRECTS, checkedIndices, el, showMessage, saveChanges, renderRedirects */
 const showImportedMessage = (imported, existing, unsafe) => {
 	const parts = [];
 	let success = false;
@@ -49,17 +50,7 @@ const importRedirects = (ev) => {
 
 		// Pre-build a canonical key for each existing redirect so duplicate
 		// detection is O(n+m) rather than O(n*m).
-		const redirectKey = (r) => {
-			const appliesTo = r.appliesTo.slice().sort().join(",");
-			return [
-				r.description, r.exampleUrl, r.includePattern, r.excludePattern,
-				r.patternDesc, r.redirectUrl, r.patternType, r.processMatches,
-				r.replaceFrom, r.replacePattern, r.replacement,
-				String(r.replaceAll), String(r.usePatternForReplace),
-				String(r.allowLoops), r.sourcePattern, appliesTo
-			].join("\0");
-		};
-		const existingKeys = new Set(REDIRECTS.map(item => redirectKey(new Redirect(item))));
+		const existingKeys = new Set(REDIRECTS.map(item => Redirect.canonicalKey(new Redirect(item))));
 
 		let imported = 0,
 			existing = 0,
@@ -75,7 +66,7 @@ const importRedirects = (ev) => {
 				continue;
 			}
 			r.updateExampleResult();
-			const key = redirectKey(r);
+			const key = Redirect.canonicalKey(r);
 			if (existingKeys.has(key)) {
 				existing++;
 			} else {

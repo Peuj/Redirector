@@ -113,18 +113,16 @@ if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
                 chrome.storage.local.get({ redirects: [] }, callback);
             } else if (params.type === "save-redirects") {
                 chrome.storage.local.set({ redirects: params.redirects }, () => {
-                    if (callback) callback({ message: "Redirects saved" });
+                    if (callback) callback({ status: "ok", message: "Redirects saved" });
                 });
             } else if (params.type === "toggle-sync") {
                 if (params.isSyncEnabled) {
-                    if (callback) callback({ message: "sync-enabled" });
+                    if (callback) callback({ status: "sync-enabled", message: "sync-enabled" });
                 } else if (callback) {
-                    callback({ message: "sync-disabled" });
+                    callback({ status: "sync-disabled", message: "sync-disabled" });
                 }
             } else if (params.type === "get-sync-state") {
                 if (callback) callback({ isSyncEnabled: false });
-            } else if (params.type === "update-icon") {
-                if (callback) callback({});
             }
         },
         getManifest() {

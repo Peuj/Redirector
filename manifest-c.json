@@ -35,9 +35,8 @@
       "description": "Toggle Redirector on/off"
     }
   },
-  "externally_connectable": {
-    "_comment": "DEV ONLY — allows redirector-test companion extension to send messages",
-    "ids": ["*"]
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   },
   "background": {
     "service_worker": "js/background.js"

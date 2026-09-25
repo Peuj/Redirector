@@ -1,14 +1,17 @@
 // Everything to do with the edit and delete forms is here...
+/* global REDIRECTS, checkedIndices, priorSelectedIndex, selectedIndex:writable, template, dataActions,
+          el, showForm, hideForm, dataBind, updateBindings, saveChanges, showMessage */
 
 let activeRedirect = null;
+const isChromium = !navigator.userAgent.match(/Firefox/i);
 
 const updateChromiumTransformWarning = (redirect) => {
-	const isChromium = !navigator.userAgent.match(/Firefox/i);
 	el("#chromium-transform-warning").classList.toggle("hidden", !(isChromium && redirect.processMatches !== "noProcessing"));
 };
 
 const createNewRedirect = () => {
 	activeRedirect = new Redirect();
+	updateChromiumTransformWarning(activeRedirect);
 	el("#edit-redirect-form h3").textContent = "Create Redirect";
 	collapseAdvancedOptions();
 	expandHelperPanel();
@@ -59,13 +62,8 @@ const saveRedirect = () => {
 const toggleAdvancedOptions = (ev) => {
 	ev.preventDefault();
 	const advancedOptions = el(".advanced");
-	if (advancedOptions.classList.contains("hidden")) {
-		advancedOptions.classList.remove("hidden");
-		el("#advanced-toggle button").textContent = "Hide advanced options...";
-	} else {
-		advancedOptions.classList.add("hidden");
-		el("#advanced-toggle button").textContent = "Advanced options...";
-	}
+	const nowHidden = advancedOptions.classList.toggle("hidden");
+	el("#advanced-toggle button").textContent = nowHidden ? "Advanced options..." : "Hide advanced options...";
 };
 
 const collapseAdvancedOptions = () => {

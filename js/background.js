@@ -17,10 +17,18 @@ let enablePost = false;
 
 const isFirefox = Boolean(navigator.userAgent.match(/Firefox/i));
 const isOpera = Boolean(navigator.userAgent.match(/OPR\//i));
+const isChrome = !isFirefox && !isOpera && navigator.userAgent.toLowerCase().includes("chrome");
 
 // Which storage area holds redirects (local or sync).
 // Only mutated once all async migration work in toggle-sync has completed.
 let storageArea = chrome.storage.local;
+
+// Guard: true while toggle-sync migration is in progress; save-redirects is rejected during this time.
+let migrationInProgress = false;
+
+// Tracks the current global disabled state synchronously; updated in monitorChanges and at startup
+// so setUpRedirectListener and updateDNRRules never race against an async storage read.
+let currentlyDisabled = false;
 
 // Redirects partitioned by request type to minimise the set checked per request.
 let partitionedRedirects = {};
@@ -33,25 +41,27 @@ const ignoreNextRequest = {};
 const justRedirected = {};
 const redirectThreshold = 3;
 
-const updateIcon = () => {
-	chrome.storage.local.get({ disabled: false }, (obj) => {
-		if (obj.disabled) {
-			chrome.action.setBadgeText({ text: "off" });
-			chrome.action.setBadgeBackgroundColor({ color: "#fc5953" });
-			if (chrome.action.setBadgeTextColor) chrome.action.setBadgeTextColor({ color: "#fafafa" });
-		} else {
-			chrome.action.setBadgeText({ text: "on" });
-			chrome.action.setBadgeBackgroundColor({ color: "#35b44a" });
-			if (chrome.action.setBadgeTextColor) chrome.action.setBadgeTextColor({ color: "#fafafa" });
-		}
-	});
+const updateIcon = (disabled) => {
+	if (disabled === undefined) {
+		chrome.storage.local.get({ disabled: false }, (obj) => updateIcon(obj.disabled));
+		return;
+	}
+	if (disabled) {
+		chrome.action.setBadgeText({ text: "off" });
+		chrome.action.setBadgeBackgroundColor({ color: "#fc5953" });
+		if (chrome.action.setBadgeTextColor) chrome.action.setBadgeTextColor({ color: "#fafafa" });
+	} else {
+		chrome.action.setBadgeText({ text: "on" });
+		chrome.action.setBadgeBackgroundColor({ color: "#35b44a" });
+		if (chrome.action.setBadgeTextColor) chrome.action.setBadgeTextColor({ color: "#fafafa" });
+	}
 };
 
 const isRedirectLoop = (url) => {
 	const data = justRedirected[url];
 	const threshold = 3000;
 	if (!data || (Date.now() - data.timestamp) > threshold) {
-		justRedirected[url] = { timestamp: Date.now(), count: 1 };
+		justRedirected[url] = { timestamp: Date.now(), count: 0 };
 		return false;
 	}
 	data.count++;
@@ -66,7 +76,7 @@ const checkRedirects = (details) => {
 	// Only redirect GET by default; POST redirects must be explicitly enabled
 	if (!enablePost && details.method !== "GET") return {};
 
-	log(`Checking: ${details.type}: ${details.url}`);
+	if (log.enabled) log(`Checking: ${details.type}: ${details.url}`);
 
 	const list = partitionedRedirects[details.type];
 	if (!list) {
@@ -102,7 +112,8 @@ const checkRedirects = (details) => {
 
 const monitorChanges = (changes) => {
 	if (changes.disabled) {
-		updateIcon();
+		currentlyDisabled = Boolean(changes.disabled.newValue);
+		updateIcon(changes.disabled.newValue);
 		if (changes.disabled.newValue === true) {
 			log("Disabling Redirector, removing listener");
 			chrome.webRequest.onBeforeRequest.removeListener(checkRedirects);
@@ -129,7 +140,7 @@ const monitorChanges = (changes) => {
 		enablePost = changes.enablePost.newValue;
 		log(`Enable POST setting has changed to ${enablePost}`);
 		// Rebuild DNR rules so requestMethods filter stays in sync
-		if (!isFirefox) getRedirects((obj) => updateDNRRules(obj.redirects));
+		if (!isFirefox) getRedirects().then(obj => updateDNRRules(obj.redirects));
 	}
 	if (changes.customVariables) {
 		Redirect.customVariables = changes.customVariables.newValue || {};
@@ -144,19 +155,6 @@ chrome.commands.onCommand.addListener((command) => {
 		});
 	}
 });
-
-const createFilter = (redirects) => {
-	const types = [];
-	for (const redirect of redirects) {
-		for (const type of redirect.appliesTo) {
-			if (chrome.webRequest.ResourceType[type.toUpperCase()] !== undefined && !types.includes(type)) {
-				types.push(type);
-			}
-		}
-	}
-	types.sort();
-	return { urls: ["https://*/*", "http://*/*"], types };
-};
 
 const createPartitionedRedirects = (redirects) => {
 	const partitioned = {};
@@ -180,54 +178,70 @@ const createPartitionedRedirects = (redirects) => {
 };
 
 // Chrome MV3: resource types recognised by declarativeNetRequest.
+// Keep this list in sync with Redirect.requestTypes and the webRequest type check in setUpRedirectListener.
 const DNR_RESOURCE_TYPES = new Set([
 	"main_frame", "sub_frame", "stylesheet", "script", "image",
 	"font", "object", "xmlhttprequest", "ping", "csp_report",
 	"media", "websocket", "webbundle", "other"
 ]);
 
-const updateDNRRules = async (redirects) => {
-	if (!chrome.declarativeNetRequest) return;
+// Serialize DNR updates: each call waits for the previous to finish, so the last-caller's
+// intent always wins (e.g. disable clears rules that a concurrent add-rules call committed).
+let _dnrChain = Promise.resolve();
 
-	const existing = await chrome.declarativeNetRequest.getDynamicRules();
-	const removeRuleIds = existing.map(r => r.id);
+const updateDNRRules = (redirects) => {
+	_dnrChain = _dnrChain.then(() => _applyDNRRules(redirects));
+	return _dnrChain;
+};
+
+const _applyDNRRules = async (redirects) => {
+	if (!chrome.declarativeNetRequest) return;
+	// Fast-fail: skip registering rules when globally disabled (clear call is always allowed).
+	if (currentlyDisabled && redirects.length > 0) return;
 
 	const candidates = [];
 	for (const rObj of redirects) {
 		if (rObj.disabled) continue;
 		if (rObj.processMatches && rObj.processMatches !== "noProcessing") continue;
 		const r = new Redirect(rObj);
-		const regexFilter = r._preparePattern(r.includePattern);
+		const regexFilter = r.compiledIncludePattern;
 		if (!regexFilter) continue;
-		const resourceTypes = (rObj.appliesTo || ["main_frame"]).filter(t => DNR_RESOURCE_TYPES.has(t));
+		const resourceTypes = (rObj.appliesTo && rObj.appliesTo.length ? rObj.appliesTo : ["main_frame"]).filter(t => DNR_RESOURCE_TYPES.has(t));
 		if (!resourceTypes.length) continue;
 		candidates.push({ rObj, regexFilter, resourceTypes });
 	}
 
-	const supportResults = await Promise.all(
-		candidates.map(c => chrome.declarativeNetRequest.isRegexSupported({ regex: c.regexFilter, isCaseSensitive: false }))
-	);
-
-	const newRules = [];
-	let id = 1;
-	for (let i = 0; i < candidates.length; i++) {
-		if (!supportResults[i].isSupported) {
-			log(`DNR: skipping "${candidates[i].rObj.description}" (${supportResults[i].reason})`);
-			continue;
-		}
-		const { rObj, regexFilter, resourceTypes } = candidates[i];
-		const regexSubstitution = rObj.redirectUrl.replace(/\$(\d+)/g, "\\$1");
-		// Respect enablePost: restrict to GET-only unless the user has enabled POST redirects
-		const requestMethods = enablePost ? undefined : ["get"];
-		newRules.push({
-			id: id++,
-			priority: 1,
-			action: { type: "redirect", redirect: { regexSubstitution } },
-			condition: { regexFilter, resourceTypes, isUrlFilterCaseSensitive: false, requestMethods }
-		});
-	}
-
 	try {
+		const existing = await chrome.declarativeNetRequest.getDynamicRules();
+		// Re-check after the async gap: a concurrent disable may have fired while we were awaiting.
+		if (currentlyDisabled && redirects.length > 0) return;
+		const removeRuleIds = existing.map(r => r.id);
+
+		const supportResults = await Promise.all(
+			candidates.map(c => chrome.declarativeNetRequest.isRegexSupported({ regex: c.regexFilter, isCaseSensitive: false }))
+		);
+		// Re-check after the async gap: a concurrent disable may have fired while we were awaiting.
+		if (currentlyDisabled && redirects.length > 0) return;
+
+		const newRules = [];
+		let id = 1;
+		for (let i = 0; i < candidates.length; i++) {
+			if (!supportResults[i].isSupported) {
+				log(`DNR: skipping "${candidates[i].rObj.description}" (${supportResults[i].reason})`);
+				continue;
+			}
+			const { rObj, regexFilter, resourceTypes } = candidates[i];
+			const regexSubstitution = rObj.redirectUrl.replace(/\$(\d+)/g, "\\$1");
+			// Respect enablePost: restrict to GET-only unless the user has enabled POST redirects
+			const requestMethods = enablePost ? undefined : ["get"];
+			newRules.push({
+				id: id++,
+				priority: 1,
+				action: { type: "redirect", redirect: { regexSubstitution } },
+				condition: { regexFilter, resourceTypes, isUrlFilterCaseSensitive: false, requestMethods }
+			});
+		}
+
 		await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules: newRules });
 		log(`DNR: ${newRules.length} rules active`, true);
 	} catch (e) {
@@ -235,62 +249,73 @@ const updateDNRRules = async (redirects) => {
 	}
 };
 
-const getRedirects = (callback) => {
+const getRedirects = () => {
 	if (chrome.storage.managed instanceof Object) {
-		chrome.storage.managed.get("redirects", (obj) => {
-			if (obj && obj.redirects) {
-				callback(obj);
-			} else {
-				storageArea.get({ redirects: [] }, callback);
-			}
+		return new Promise((resolve) => {
+			chrome.storage.managed.get("redirects", (obj) => {
+				if (obj && obj.redirects) {
+					resolve(obj);
+				} else {
+					storageArea.get({ redirects: [] }, resolve);
+				}
+			});
 		});
-	} else {
-		storageArea.get({ redirects: [] }, callback);
 	}
+	return storageArea.get({ redirects: [] });
 };
 
-const setUpRedirectListener = () => {
+const setUpRedirectListener = async () => {
+	const obj = await getRedirects();
+	const redirects = obj.redirects;
+
+	// Remove old listeners only once the new configuration is ready,
+	// so there is no window where no listener is registered.
 	chrome.webRequest.onBeforeRequest.removeListener(checkRedirects);
 	chrome.webNavigation.onHistoryStateUpdated.removeListener(checkHistoryStateRedirects);
 
-	getRedirects((obj) => {
-		const redirects = obj.redirects;
-		if (redirects.length === 0) {
-			log("No redirects defined, not setting up listener");
-			if (!isFirefox) updateDNRRules([]);
-			return;
+	if (redirects.length === 0) {
+		log("No redirects defined, not setting up listener");
+		if (!isFirefox) updateDNRRules([]);
+		return;
+	}
+
+	if (currentlyDisabled) {
+		log("Redirector is disabled, not registering listeners");
+		if (!isFirefox) updateDNRRules([]);
+		return;
+	}
+
+	partitionedRedirects = createPartitionedRedirects(redirects);
+
+	if (isFirefox) {
+		// Keep in sync with DNR_RESOURCE_TYPES and the Redirect.requestTypes list
+		const types = [];
+		for (const redirect of redirects) {
+			for (const type of redirect.appliesTo) {
+				if (chrome.webRequest.ResourceType[type.toUpperCase()] !== undefined && !types.includes(type)) {
+					types.push(type);
+				}
+			}
 		}
+		types.sort();
+		const filter = { urls: ["https://*/*", "http://*/*"], types };
+		log(`Setting filter for listener: ${JSON.stringify(filter)}`);
+		if (filter.types.length > 0) {
+			chrome.webRequest.onBeforeRequest.addListener(checkRedirects, filter, ["blocking"]);
+		}
+	} else {
+		updateDNRRules(redirects);
+	}
 
-		chrome.storage.local.get({ disabled: false }, ({ disabled }) => {
-			if (disabled) {
-				log("Redirector is disabled, not registering listeners");
-				if (!isFirefox) updateDNRRules([]);
-				return;
-			}
-
-			partitionedRedirects = createPartitionedRedirects(redirects);
-
-			if (isFirefox) {
-				const filter = createFilter(redirects);
-				log(`Setting filter for listener: ${JSON.stringify(filter)}`);
-				if (filter.types.length > 0) {
-					chrome.webRequest.onBeforeRequest.addListener(checkRedirects, filter, ["blocking"]);
-				}
-			} else {
-				updateDNRRules(redirects);
-			}
-
-			if (partitionedRedirects.history) {
-				log("Adding HistoryState Listener");
-				const historyFilter = { url: [] };
-				for (const r of partitionedRedirects.history) {
-					const urlPattern = r._preparePattern(r.includePattern);
-					if (urlPattern) historyFilter.url.push({ urlMatches: urlPattern });
-				}
-				chrome.webNavigation.onHistoryStateUpdated.addListener(checkHistoryStateRedirects, historyFilter);
-			}
-		});
-	});
+	if (partitionedRedirects.history) {
+		log("Adding HistoryState Listener");
+		const historyFilter = { url: [] };
+		for (const r of partitionedRedirects.history) {
+			const urlPattern = r.compiledIncludePattern;
+			if (urlPattern) historyFilter.url.push({ urlMatches: urlPattern });
+		}
+		chrome.webNavigation.onHistoryStateUpdated.addListener(checkHistoryStateRedirects, historyFilter);
+	}
 };
 
 // Handle SPA navigation (YouTube, Twitter, etc.) that pushes new history states without full reloads.
@@ -298,7 +323,7 @@ const checkHistoryStateRedirects = (ev) => {
 	// Build a plain object instead of mutating the browser event
 	const result = checkRedirects({ ...ev, type: "history", method: "GET" });
 	if (result.redirectUrl) {
-		chrome.tabs.update(ev.tabId, { url: result.redirectUrl });
+		chrome.tabs.update(ev.tabId, { url: result.redirectUrl }).catch(() => {}); // eslint-disable-line no-empty-function
 	}
 };
 
@@ -308,25 +333,33 @@ chrome.runtime.onMessage.addListener(
 
 		if (request.type === "get-redirects") {
 			log("Getting redirects from storage");
-			getRedirects((obj) => {
+			getRedirects().then((obj) => {
 				log(`Got redirects from storage: ${JSON.stringify(obj)}`);
 				sendResponse(obj);
 				log("Sent redirects to content page");
 			});
 
 		} else if (request.type === "save-redirects") {
-			console.log(`Saving redirects, count=${request.redirects.length}`);
+			if (!Array.isArray(request.redirects)) {
+				sendResponse({ status: "error", message: "Invalid payload" });
+				return false;
+			}
+			if (migrationInProgress) {
+				sendResponse({ status: "error", message: "Sync migration in progress, please try again." });
+				return false;
+			}
+			log(`Saving redirects, count=${request.redirects.length}`);
 			storageArea.set({ redirects: request.redirects }, () => {
 				if (chrome.runtime.lastError) {
 					const msg = chrome.runtime.lastError.message;
 					if (msg.includes("QUOTA_BYTES_PER_ITEM quota exceeded")) {
-						sendResponse({ message: "Redirects failed to save as size of redirects larger than what's allowed by Sync. Refer Help Page" });
+						sendResponse({ status: "quota-exceeded", message: "Redirects failed to save as size of redirects larger than what's allowed by Sync. Refer Help Page" });
 					} else {
-						sendResponse({ message: `Redirects failed to save: ${msg}` });
+						sendResponse({ status: "error", message: `Redirects failed to save: ${msg}` });
 					}
 				} else {
 					log("Finished saving redirects to storage");
-					sendResponse({ message: "Redirects saved" });
+					sendResponse({ status: "ok", message: "Redirects saved" });
 				}
 			});
 
@@ -337,6 +370,7 @@ chrome.runtime.onMessage.addListener(
 
 		} else if (request.type === "toggle-sync") {
 			log(`toggling sync to ${request.isSyncEnabled}`);
+			migrationInProgress = true;
 			chrome.storage.local.set({ isSyncEnabled: request.isSyncEnabled }, () => {
 				if (request.isSyncEnabled) {
 					// Validate size before committing the migration
@@ -346,24 +380,28 @@ chrome.runtime.onMessage.addListener(
 							log(`size ${size} exceeds sync quota ${chrome.storage.sync.QUOTA_BYTES_PER_ITEM}`);
 							// Revert the isSyncEnabled flag
 							chrome.storage.local.set({ isSyncEnabled: false });
-							sendResponse({ message: "Sync Not Possible - size of Redirects larger than what's allowed by Sync. Refer Help page" });
+							migrationInProgress = false;
+							sendResponse({ status: "sync-not-possible", message: "Sync Not Possible - size of Redirects larger than what's allowed by Sync. Refer Help page" });
 						} else {
 							chrome.storage.local.get({ redirects: [] }, (obj) => {
 								if (obj.redirects.length > 0) {
 									chrome.storage.sync.set(obj, () => {
 										if (chrome.runtime.lastError) {
 											chrome.storage.local.set({ isSyncEnabled: false });
-											sendResponse({ message: `Redirects failed to save to Sync: ${chrome.runtime.lastError.message}` });
+											migrationInProgress = false;
+											sendResponse({ status: "error", message: `Redirects failed to save to Sync: ${chrome.runtime.lastError.message}` });
 											return;
 										}
 										chrome.storage.local.remove("redirects");
 										storageArea = chrome.storage.sync; // commit only on success
+										migrationInProgress = false;
 										setUpRedirectListener();
-										sendResponse({ message: "sync-enabled" });
+										sendResponse({ status: "sync-enabled", message: "sync-enabled" });
 									});
 								} else {
 									storageArea = chrome.storage.sync;
-									sendResponse({ message: "sync-enabled" });
+									migrationInProgress = false;
+									sendResponse({ status: "sync-enabled", message: "sync-enabled" });
 								}
 							});
 						}
@@ -374,17 +412,20 @@ chrome.runtime.onMessage.addListener(
 							chrome.storage.local.set(obj, () => {
 								if (chrome.runtime.lastError) {
 									chrome.storage.local.set({ isSyncEnabled: true });
-									sendResponse({ message: `Redirects failed to save to local storage: ${chrome.runtime.lastError.message}` });
+									migrationInProgress = false;
+									sendResponse({ status: "error", message: `Redirects failed to save to local storage: ${chrome.runtime.lastError.message}` });
 									return;
 								}
 								chrome.storage.sync.remove("redirects");
 								storageArea = chrome.storage.local; // commit only on success
+								migrationInProgress = false;
 								setUpRedirectListener();
-								sendResponse({ message: "sync-disabled" });
+								sendResponse({ status: "sync-disabled", message: "sync-disabled" });
 							});
 						} else {
 							storageArea = chrome.storage.local;
-							sendResponse({ message: "sync-disabled" });
+							migrationInProgress = false;
+							sendResponse({ status: "sync-disabled", message: "sync-disabled" });
 						}
 					});
 				}
@@ -400,8 +441,6 @@ chrome.runtime.onMessage.addListener(
 );
 
 // First-time setup: read all settings in one call to minimise IPC round-trips.
-updateIcon();
-
 chrome.storage.local.get({
 	logging: false,
 	isSyncEnabled: false,
@@ -410,6 +449,8 @@ chrome.storage.local.get({
 	disabled: false,
 	storageVersion: 0
 }, (obj) => {
+	updateIcon(obj.disabled);
+	currentlyDisabled = obj.disabled;
 	log.enabled = obj.logging;
 	enablePost = obj.enablePost;
 	Redirect.customVariables = obj.customVariables;
@@ -444,7 +485,7 @@ const sendNotifications = (redirect, originalUrl, redirectedUrl) => {
 	// Reuse a fixed notification ID so rapid redirects replace rather than stack
 	const notificationId = "redirector-redirect";
 
-	if (navigator.userAgent.toLowerCase().includes("chrome") && !isOpera) {
+	if (isChrome) {
 		chrome.notifications.create(notificationId, {
 			type: "list",
 			items: [{ title: "Original page: ", message: originalUrl }, { title: "Redirected to: ", message: redirectedUrl }],
@@ -473,7 +514,7 @@ chrome.runtime.onInstalled.addListener(() => {
 	});
 	// Ensure the cleanup alarm exists (Chrome alarms persist across SW restarts)
 	chrome.alarms.get("cleanup-loop-caches", (alarm) => {
-		if (!alarm) chrome.alarms.create("cleanup-loop-caches", { periodInMinutes: 1 });
+		if (!alarm) chrome.alarms.create("cleanup-loop-caches", { periodInMinutes: 0.1 });
 	});
 });
 
@@ -499,19 +540,18 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 	}
 });
 
-const getRedirectForUrl = (url) => {
-	const list = partitionedRedirects.main_frame || [];
-	for (const r of list) {
-		const result = r.getMatch(url, false, "");
-		if (result.isMatch) return result.redirectTo;
-	}
-	return null;
-};
-
 chrome.contextMenus.onClicked.addListener((info, tab) => {
 	const url = info.linkUrl || info.pageUrl;
 	if (!url || !tab) return;
-	const redirectedUrl = getRedirectForUrl(url);
+	const list = partitionedRedirects.main_frame || [];
+	let redirectedUrl = null;
+	for (const r of list) {
+		const result = r.getMatch(url, false, undefined);
+		if (result.isMatch) {
+			redirectedUrl = result.redirectTo;
+			break;
+		}
+	}
 	const textToCopy = redirectedUrl || url;
 	chrome.scripting.executeScript({
 		target: { tabId: tab.id },

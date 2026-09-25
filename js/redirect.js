@@ -105,24 +105,19 @@ class Redirect {
 		}
 	}
 
+	static canonicalKey(r) {
+		const appliesTo = r.appliesTo.slice().sort().join(",");
+		return [
+			r.description, r.exampleUrl, r.includePattern, r.excludePattern,
+			r.patternDesc, r.redirectUrl, r.patternType, r.processMatches,
+			r.replaceFrom, r.replacePattern, r.replacement,
+			String(r.replaceAll), String(r.usePatternForReplace),
+			String(r.allowLoops), r.sourcePattern, appliesTo
+		].join("\0");
+	}
+
 	equals(other) {
-		return this.description === other.description &&
-			this.exampleUrl === other.exampleUrl &&
-			this.includePattern === other.includePattern &&
-			this.excludePattern === other.excludePattern &&
-			this.patternDesc === other.patternDesc &&
-			this.redirectUrl === other.redirectUrl &&
-			this.patternType === other.patternType &&
-			this.processMatches === other.processMatches &&
-			this.replaceFrom === other.replaceFrom &&
-			this.replacePattern === other.replacePattern &&
-			this.replacement === other.replacement &&
-			this.replaceAll === other.replaceAll &&
-			this.usePatternForReplace === other.usePatternForReplace &&
-			this.allowLoops === other.allowLoops &&
-			this.sourcePattern === other.sourcePattern &&
-			this.appliesTo.length === other.appliesTo.length &&
-			this.appliesTo.every(t => other.appliesTo.includes(t));
+		return Redirect.canonicalKey(this) === Redirect.canonicalKey(other);
 	}
 
 	toObject() {
@@ -274,14 +269,20 @@ class Redirect {
 		return JSON.stringify(this.toObject(), null, 2);
 	}
 
+	get compiledIncludePattern() {
+		return this._preparePattern(this.includePattern);
+	}
+
 	_preparePattern(pattern) {
 		if (!pattern) return null;
 		if (this.patternType === Redirect.REGEX) return pattern;
+		// Collapse consecutive wildcards so ** doesn't produce two capture groups
 		// Convert wildcard to anchored regex: escape special chars, map * to (.*?)
-		return `^${ 
+		return `^${
 			pattern.
+				replace(/\*+/g, "*").
 				replace(/[()[\]{}?.^$\\+|]/g, "\\$&").
-				replace(/\*/g, "(.*?)") 
+				replace(/\*/g, "(.*?)")
 			}$`;
 	}
 
@@ -293,6 +294,8 @@ class Redirect {
 				repl = this.replaceAll
 					? repl.replaceAll(pattern, this.replacement)
 					: repl.replace(pattern, this.replacement);
+			} else if (!this.usePatternForReplace && !this.replaceFrom) {
+				console.warn("Redirector: replace rule has empty replaceFrom — no-op");
 			}
 		} else if (this.processMatches === "urlDecode") {
 			repl = Redirect._tryDecodeURI(repl);

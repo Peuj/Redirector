@@ -116,21 +116,6 @@ select:focus {
   box-shadow: var(--focus-ring);
 }
 
-textarea {
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-  color: var(--text);
-  font-family: var(--font-mono);
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-textarea:focus {
-  border-color: var(--blue);
-  box-shadow: var(--focus-ring);
-}
-
 /* ================================================================
    Buttons
    ================================================================ */
@@ -222,11 +207,6 @@ textarea:focus {
   background: var(--grey-hover);
   color: var(--text);
   border-color: var(--grey-hover);
-}
-
-.btn.blue.active {
-  background: var(--blue-deep);
-  color: #fff;
 }
 
 a.disabled,
@@ -426,7 +406,7 @@ body.is-chromium .redirect-info > .chromium-transform-row {
 }
 
 .chromium-transform-badge {
-  color: var(--color-error, #c0392b);
+  color: var(--red);
   font-size: 12px;
 }
 
@@ -878,7 +858,7 @@ dialog::backdrop {
 }
 
 .warning-text {
-  color: var(--color-error, #c0392b);
+  color: var(--red);
   font-size: 12px;
   margin: 4px 0 0;
 }

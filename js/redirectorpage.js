@@ -1,11 +1,17 @@
 const REDIRECTS = [];
+/** @global */
 const options = { isSyncEnabled: false };
+/** @global */
 const dataActions = {};
+/** @global */
 let template;
 
 // Selection state
+/** @global */
 let selectedIndex = null;
+/** @global */
 let priorSelectedIndex = null; // selectedIndex snapshot before each .redirect-rows action
+/** @global */
 const checkedIndices = new Set();
 
 // Counts our own pending saves so the concurrent-tab storage listener
@@ -23,7 +29,7 @@ const saveChanges = () => {
 			showMessage("Error: changes could not be saved. The extension background page is not responding.", false);
 			return;
 		}
-		if (response.message.includes("Redirects failed to save")) {
+		if (response.status === "quota-exceeded" || response.status === "error") {
 			ownSavePending = Math.max(0, ownSavePending - 1);
 			showMessage(response.message, false);
 		}
@@ -39,13 +45,13 @@ const toggleSyncSetting = () => {
 			showMessage("Error: could not reach background page to change sync settings.", false);
 			return;
 		}
-		if (response.message === "sync-enabled") {
+		if (response.status === "sync-enabled") {
 			options.isSyncEnabled = true;
 			showMessage("Sync is enabled!", true);
-		} else if (response.message === "sync-disabled") {
+		} else if (response.status === "sync-disabled") {
 			options.isSyncEnabled = false;
 			showMessage("Sync is disabled - local storage will be used!", true);
-		} else if (response.message.includes("Sync Not Possible")) {
+		} else if (response.status === "sync-not-possible") {
 			options.isSyncEnabled = false;
 			chrome.storage.local.set({ isSyncEnabled: options.isSyncEnabled });
 			showMessage(response.message, false);
@@ -59,16 +65,12 @@ const toggleSyncSetting = () => {
 // Build the context object passed to dataBind for a single row.
 // Sentinel flags ($first, $last, $index) are passed separately so the
 // REDIRECTS data object is never mutated.
-const buildRowContext = (redirect, index) => {
-	return Object.assign(Object.create(redirect), {
+const renderSingleRedirect = (node, redirect, index) => {
+	dataBind(node, Object.assign(Object.create(redirect), {
 		$first: index === 0,
 		$last: index === REDIRECTS.length - 1,
 		$index: index
-	});
-};
-
-const renderSingleRedirect = (node, redirect, index) => {
-	dataBind(node, buildRowContext(redirect, index));
+	}));
 	node.setAttribute("data-index", index);
 	for (const btn of node.querySelectorAll(".btn")) {
 		btn.setAttribute("data-index", index);
@@ -76,13 +78,16 @@ const renderSingleRedirect = (node, redirect, index) => {
 };
 
 const renderRedirects = () => {
-	el(".redirect-rows").textContent = "";
+	const container = el(".redirect-rows");
+	container.textContent = "";
+	const fragment = document.createDocumentFragment();
 	for (let i = 0; i < REDIRECTS.length; i++) {
 		const node = template.cloneNode(true);
 		node.removeAttribute("id");
 		renderSingleRedirect(node, REDIRECTS[i], i);
-		el(".redirect-rows").appendChild(node);
+		fragment.appendChild(node);
 	}
+	container.appendChild(fragment);
 	refreshUIState();
 };
 
@@ -577,6 +582,8 @@ const saveVariablesNow = () => {
 		if (key) vars[key] = val;
 	}
 	Redirect.customVariables = vars;
+	// customVariables are stored directly in local storage, bypassing the background
+	// sendMessage channel: they are never synced and need no background-page coordination.
 	chrome.storage.local.set({ customVariables: vars });
 };
 
@@ -618,7 +625,6 @@ const pageLoad = () => {
 	template.parentNode.removeChild(template);
 
 	chrome.runtime.sendMessage({ type: "get-redirects" }, (response) => {
-		console.log(`Received redirects message, count=${response.redirects.length}`);
 		for (const r of response.redirects) {
 			REDIRECTS.push(new Redirect(r));
 		}
